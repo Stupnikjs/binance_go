@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
+	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/joho/godotenv"
@@ -25,31 +25,37 @@ func main() {
 
 	// Example: Get account information
 
-	if err != nil {
-		log.Fatalf("Error getting account info: %v", err)
-	}
+	Processor(client)
+
+}
+
+func Processor(client *binance_connector.Client) {
 
 	trade := Trade{}
 	trade.Amount = 0.1
 	trade.Asset = "ETHUSDC"
+
+	var buyCondition = false
+	var sellCondition = false
+	for !buyCondition {
+		time.Sleep(1 * time.Second)
+		buyCondition = true
+	}
+	err := trade.Buy(client)
+	for !sellCondition {
+		time.Sleep(2 * time.Second)
+		sellCondition = true
+	}
+	err = trade.Sell(client)
+
 	if err != nil {
 		println(err)
 	}
-	err = trade.Buy(client)
+
+	err, _ = GetAssetBalance(client, "ETH")
 
 	if err != nil {
 		println(err)
 	}
-
-	err, balance := GetAssetBalance(client, "ETH")
-
-	if err != nil {
-		println(err)
-	}
-
-	fmt.Printf("Decimal (%%f): %f\n", balance)
-
-	// Example: Get current price for a trading pair
-	_ = "BTCUSDC"
 
 }
