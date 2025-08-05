@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -31,6 +32,9 @@ func main() {
 
 func Processor(client *binance_connector.Client) {
 
+	klines := GetKlines(client, "BTCUSDC", "1h", 50)
+	closing := CloseFromKlines(klines)
+	fmt.Println(closing)
 	trade := Trade{}
 	trade.Amount = 0.1
 	trade.Asset = "ETHUSDC"
@@ -57,5 +61,22 @@ func Processor(client *binance_connector.Client) {
 	if err != nil {
 		println(err)
 	}
+
+}
+
+func TradingScript(client *binance_connector.Client) {
+
+	// fonction qui va checker les indicateurs et conditions d'achats
+
+	// qui retourne un []String avec les paires a acheter
+
+	// loop sur []String pour creer les trades et executer les ordres
+
+	// check sur les indicateurs et conditions de vente sur les trade en cours
+	// cloture des trades en cours et vente si indicateurs valident
+
+	// incrementation d'un []Trade de trade finis
+
+	// sortie de la boucle ==> edition d'un fichier de sythese des trades
 
 }
