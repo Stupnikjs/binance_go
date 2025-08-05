@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -32,9 +31,6 @@ func main() {
 
 func Processor(client *binance_connector.Client) {
 
-	klines := GetKlines(client, "BTCUSDC", "1h", 50)
-	closing := CloseFromKlines(klines)
-	fmt.Println(closing)
 	trade := Trade{}
 	trade.Amount = 0.1
 	trade.Asset = "ETHUSDC"
@@ -51,12 +47,6 @@ func Processor(client *binance_connector.Client) {
 		sellCondition = true
 	}
 	err = trade.Sell(client)
-
-	if err != nil {
-		println(err)
-	}
-
-	err, _ = GetAssetBalance(client, "ETH")
 
 	if err != nil {
 		println(err)
