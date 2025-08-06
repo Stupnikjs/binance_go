@@ -13,12 +13,13 @@ import (
 )
 
 type Trade struct {
-	Asset      string
-	Buy_price  *float64
-	Buy_time   any
-	Sell_price *float64
-	Sell_time  any
-	Amount     float64
+	Asset         string
+	Buy_price     *float64
+	Buy_time      int64
+	Sell_price    *float64
+	Sell_time     any
+	Amount        float64
+	SellCondition func(args ...interface{}) bool
 }
 
 func (t *Trade) Buy(client *binance_connector.Client) error {
@@ -40,6 +41,7 @@ func (t *Trade) Buy(client *binance_connector.Client) error {
 		float_price, err := strconv.ParseFloat(orderResponse.Fills[0].Price, 64)
 		t.Buy_price = &float_price
 		t.Buy_time = orderResponse.TransactTime
+		t.SellCondition = t.SellAfter3min()
 
 		return err
 

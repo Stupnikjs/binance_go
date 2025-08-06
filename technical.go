@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
@@ -140,6 +141,11 @@ func RSIunder25(client *binance_connector.Client, pair string, interval string, 
 	klines := GetKlines(client, pair, interval, candles)
 	close := CloseFromKlines(klines)
 	rsi := RSI(close, rsiCoef)
-	fmt.Println("\n %%f", rsi[len(rsi)-1])
+	// fmt.Println("\n %%f", rsi[len(rsi)-1])
 	return rsi[len(rsi)-1] <= 25
+}
+
+func (t *Trade) SellAfter3min(buyTimeStamp int64) bool {
+	now := time.Now().UnixMilli()
+	return now > (buyTimeStamp + 180000)
 }

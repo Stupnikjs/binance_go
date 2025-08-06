@@ -36,7 +36,7 @@ func Processor(client *binance_connector.Client) {
 
 	for {
 		print(RSIunder25(client, "ETHUSDC", "1m", 40, 14))
-		if RSIunder25(client, "ETHUSDC", "1m", 40, 14) {
+		if true {
 			trade := Trade{
 				Asset:  "ETHUSDC",
 				Amount: 0.002,
@@ -53,6 +53,8 @@ func Processor(client *binance_connector.Client) {
 		// check for active Trades
 
 		if len(activeTrade) > 0 {
+
+			// check for sell condtions
 			err := activeTrade[0].Sell(client)
 			log.Println(activeTrade[0])
 			if err != nil {
