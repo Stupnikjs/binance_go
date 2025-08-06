@@ -137,15 +137,22 @@ func RSI(prices []float64, period int) []float64 {
 	return rsi
 }
 
-func RSIunder25(client *binance_connector.Client, pair string, interval string, candles int, rsiCoef int) bool {
-	klines := GetKlines(client, pair, interval, candles)
+// underOver is positive if u check if RSI is above underOver
+// its negative if u check if RSI is under
+func RSIstrat(client *binance_connector.Client, pair string, interval string, rsiCoef int, underOver int) bool {
+	klines := GetKlines(client, pair, interval, 60)
 	close := CloseFromKlines(klines)
 	rsi := RSI(close, rsiCoef)
 	// fmt.Println("\n %%f", rsi[len(rsi)-1])
-	return rsi[len(rsi)-1] <= 25
+	if underOver < 0 {
+		return rsi[len(rsi)-1] <= math.Abs(float64(underOver))
+	} else {
+		return rsi[len(rsi)-1] >= math.Abs(float64(underOver))
+	}
+
 }
 
-func (t *Trade) SellAfter3min(buyTimeStamp int64) bool {
+func (t *Trade) SellAfter3min() bool {
 	now := time.Now().UnixMilli()
-	return now > (buyTimeStamp + 180000)
+	return now > (t.Buy_time + 180000)
 }

@@ -31,16 +31,14 @@ func main() {
 }
 
 func Processor(client *binance_connector.Client) {
-
-	activeTrade := []Trade{}
-
 	for {
-		print(RSIunder25(client, "ETHUSDC", "1m", 40, 14))
-		if true {
+		/*
+		if RSIstrat(client, "ETHUSDC", "1m", 14, -25) {
 			trade := Trade{
 				Asset:  "ETHUSDC",
 				Amount: 0.002,
 			}
+
 			err := trade.Buy(client)
 			if err != nil {
 				fmt.Println(err)
@@ -49,36 +47,23 @@ func Processor(client *binance_connector.Client) {
 			activeTrade = append(activeTrade, trade)
 		}
 
-		time.Sleep(3 * time.Minute)
+		time.Sleep(1 * time.Minute)
 		// check for active Trades
 
 		if len(activeTrade) > 0 {
 
 			// check for sell condtions
-			err := activeTrade[0].Sell(client)
-			log.Println(activeTrade[0])
-			if err != nil {
-				fmt.Println(err)
+			if RSIstrat(client, "ETHUSDC", "1m", 14, 75) {
+
+				err := activeTrade[0].Sell(client)
+				SaveTrade(activeTrade[0])
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
+
 		}
 
 	}
-
-}
-
-func TradingScript(client *binance_connector.Client) {
-
-	// fonction qui va checker les indicateurs et conditions d'achats
-
-	// qui retourne un []String avec les paires a acheter
-
-	// loop sur []String pour creer les trades et executer les ordres
-
-	// check sur les indicateurs et conditions de vente sur les trade en cours
-	// cloture des trades en cours et vente si indicateurs valident
-
-	// incrementation d'un []Trade de trade finis
-
-	// sortie de la boucle ==> edition d'un fichier de sythese des trades
-
+		*/
 }

@@ -1,0 +1,1 @@
+{"Asset":"ETHUSDC","Buy_price":3677.71,"Buy_time":1754508591467,"Sell_price":3673.04,"Sell_time":1754508772196,"Amount":0.002}{"Asset":"ETHUSDC","Buy_price":3672.98,"Buy_time":1754508979804,"Sell_price":3681.9,"Sell_time":1754510442056,"Amount":0.002}

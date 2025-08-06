@@ -1,1 +1,0 @@
-rsi <= 25 => sortie 3 bougies ensuite 

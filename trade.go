@@ -13,22 +13,19 @@ import (
 )
 
 type Trade struct {
-	Asset         string
-	Buy_price     *float64
-	Buy_time      int64
-	Sell_price    *float64
-	Sell_time     any
-	Amount        float64
-	SellCondition func(args ...interface{}) bool
+	Buy_price  *float64
+	Buy_time   int64
+	Sell_price *float64
+	Sell_time  any
 }
 
-func (t *Trade) Buy(client *binance_connector.Client) error {
-	if t.Buy_price == nil {
+func (s *Strategy) Buy(client *binance_connector.Client) error {
+	if s.Trade.Buy_price == nil {
 		response, err := client.NewCreateOrderService().
-			Symbol(t.Asset).
+			Symbol(s.Asset).
 			Side("BUY").
 			Type("MARKET").
-			Quantity(t.Amount).
+			Quantity(s.Amount).
 			Do(context.Background())
 
 		// extract response to a struct
@@ -39,22 +36,21 @@ func (t *Trade) Buy(client *binance_connector.Client) error {
 			log.Fatalf("Failed to unmarshal JSON to struct: %v", err)
 		}
 		float_price, err := strconv.ParseFloat(orderResponse.Fills[0].Price, 64)
-		t.Buy_price = &float_price
-		t.Buy_time = orderResponse.TransactTime
-		t.SellCondition = t.SellAfter3min()
+		s.Trade.Buy_price = &float_price
+		s.Trade.Buy_time = orderResponse.TransactTime
 
 		return err
 
 	}
 	return nil
 }
-func (t *Trade) Sell(client *binance_connector.Client) error {
-	if t.Sell_price == nil {
+func (s *Strategy) Sell(client *binance_connector.Client) error {
+	if s.Trade.Sell_price == nil {
 		response, err := client.NewCreateOrderService().
-			Symbol(t.Asset).
+			Symbol(s.Asset).
 			Side("SELL").
 			Type("MARKET").
-			Quantity(t.Amount).
+			Quantity(s.Amount).
 			Do(context.Background())
 
 		// extract response to a struct
@@ -65,19 +61,19 @@ func (t *Trade) Sell(client *binance_connector.Client) error {
 			log.Fatalf("Failed to unmarshal JSON to struct: %v", err)
 		}
 		float_price, err := strconv.ParseFloat(orderResponse.Fills[0].Price, 64)
-		t.Sell_price = &float_price
-		t.Sell_time = orderResponse.TransactTime
+		s.Trade.Sell_price = &float_price
+		s.Trade.Sell_time = orderResponse.TransactTime
 		return err
 
 	}
 	return nil
 }
 
-func (t *Trade) GetGain(client *binance_connector.Client) (float64, error) {
-	if t.Buy_price == nil || t.Sell_price == nil {
+func (s *Strategy) GetGain(client *binance_connector.Client) (float64, error) {
+	if s.Trade.Buy_price == nil || s.Trade.Sell_price == nil {
 		return 0, fmt.Errorf("Trade not closed")
 	}
-	gain := *t.Sell_price*t.Amount - *t.Buy_price*t.Amount
+	gain := *s.Trade.Sell_price*s.Amount - *s.Trade.Buy_price*s.Amount
 
 	return gain, nil
 }
@@ -103,4 +99,10 @@ type Fill struct {
 	Qty             string `json:"qty"`
 	Commission      string `json:"commission"`
 	CommissionAsset string `json:"commissionAsset"`
+}
+
+type Strategy struct {
+	Asset  string
+	Amount float64
+	*Trade
 }
