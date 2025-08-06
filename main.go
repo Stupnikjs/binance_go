@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -31,25 +32,34 @@ func main() {
 
 func Processor(client *binance_connector.Client) {
 
-	trade := Trade{}
-	trade.Amount = 0.1
-	trade.Asset = "ETHUSDC"
+	activeTrade := []Trade{}
 
-	var buyCondition = false
-	var sellCondition = false
-	for !buyCondition {
-		time.Sleep(1 * time.Second)
-		buyCondition = true
-	}
-	err := trade.Buy(client)
-	for !sellCondition {
-		time.Sleep(2 * time.Second)
-		sellCondition = true
-	}
-	err = trade.Sell(client)
+	for {
+		print(RSIunder25(client, "ETHUSDC", "1m", 40, 14))
+		if RSIunder25(client, "ETHUSDC", "1m", 40, 14) {
+			trade := Trade{
+				Asset:  "ETHUSDC",
+				Amount: 0.002,
+			}
+			err := trade.Buy(client)
+			if err != nil {
+				fmt.Println(err)
+			}
+			log.Println(trade)
+			activeTrade = append(activeTrade, trade)
+		}
 
-	if err != nil {
-		println(err)
+		time.Sleep(3 * time.Minute)
+		// check for active Trades
+
+		if len(activeTrade) > 0 {
+			err := activeTrade[0].Sell(client)
+			log.Println(activeTrade[0])
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
 	}
 
 }
