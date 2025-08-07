@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/joho/godotenv"
@@ -31,39 +30,38 @@ func main() {
 }
 
 func Processor(client *binance_connector.Client) {
-	for {
-		/*
-		if RSIstrat(client, "ETHUSDC", "1m", 14, -25) {
-			trade := Trade{
-				Asset:  "ETHUSDC",
-				Amount: 0.002,
-			}
-
-			err := trade.Buy(client)
+	stratQueue := []Strategy{}
+	savedTrade := []Strategy{}
+	newStrat := Strategy{
+		Asset:         "BTCUSDC",
+		Amount:        0.001,
+		BuyCondition:  RSIbuyCondition14,
+		SellCondition: RSIsellCondition14,
+	}
+	stratQueue = append(stratQueue, newStrat)
+	for len(savedTrade) <= 1 {
+		if newStrat.BuyCondition(client, newStrat.Asset, "1m") {
+			err := newStrat.Buy(client)
+			usdc_balance, _ := GetAssetBalance(client, "USDC")
+			log.Println(usdc_balance)
+			log.Println(newStrat.Trade)
 			if err != nil {
 				fmt.Println(err)
 			}
-			log.Println(trade)
-			activeTrade = append(activeTrade, trade)
+
 		}
-
-		time.Sleep(1 * time.Minute)
-		// check for active Trades
-
-		if len(activeTrade) > 0 {
-
-			// check for sell condtions
-			if RSIstrat(client, "ETHUSDC", "1m", 14, 75) {
-
-				err := activeTrade[0].Sell(client)
-				SaveTrade(activeTrade[0])
-				if err != nil {
-					fmt.Println(err)
-				}
+		if newStrat.SellCondition(client, newStrat.Asset, "1m") {
+			err := newStrat.Sell(client)
+			if err != nil {
+				fmt.Println(err)
 			}
+			SaveTrade(newStrat)
+			usdc_balance, _ := GetAssetBalance(client, "USDC")
+			log.Println(usdc_balance)
+			savedTrade = append(savedTrade, newStrat)
 
 		}
 
 	}
-		*/
+
 }

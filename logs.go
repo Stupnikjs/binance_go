@@ -14,13 +14,13 @@ func CreateHistoryFile(fileName string) (*os.File, error) {
 	return os.OpenFile(fileName, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 }
 
-func SaveTrade(t Trade) error {
+func SaveTrade(s Strategy) error {
 	file, err := CreateHistoryFile("history.txt")
 
 	if err != nil {
 		return err
 	}
-	jsonBytes, err := json.Marshal(t)
+	jsonBytes, err := json.Marshal(s)
 	file.Write(jsonBytes)
 	defer file.Close()
 	return err

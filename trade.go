@@ -12,6 +12,16 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
+type Condition func(client *binance_connector.Client, pair string, interval string) bool
+
+type Strategy struct {
+	Asset         string
+	Amount        float64
+	BuyCondition  Condition
+	SellCondition Condition
+	*Trade
+}
+
 type Trade struct {
 	Buy_price  *float64
 	Buy_time   int64
@@ -20,7 +30,7 @@ type Trade struct {
 }
 
 func (s *Strategy) Buy(client *binance_connector.Client) error {
-	if s.Trade.Buy_price == nil {
+	if s.Trade == nil {
 		response, err := client.NewCreateOrderService().
 			Symbol(s.Asset).
 			Side("BUY").
@@ -99,10 +109,4 @@ type Fill struct {
 	Qty             string `json:"qty"`
 	Commission      string `json:"commission"`
 	CommissionAsset string `json:"commissionAsset"`
-}
-
-type Strategy struct {
-	Asset  string
-	Amount float64
-	*Trade
 }
