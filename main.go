@@ -24,8 +24,14 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 
 	// Example: Get account information
+	_ = client
 
-	Processor(client)
+	//Processor(client)
+	for {
+		fmt.Print(">:")
+		cmd := Prompt()
+		fmt.Println(cmd)
+	}
 
 }
 
