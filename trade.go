@@ -74,7 +74,12 @@ func (s *Strategy) Sell(client *binance_connector.Client) error {
 		if err != nil {
 			log.Fatalf("Failed to unmarshal JSON to struct: %v", err)
 		}
+
+		if len(orderResponse.Fills) == 0 {
+			return fmt.Errorf("Fills empty")
+		}
 		float_price, err := strconv.ParseFloat(orderResponse.Fills[0].Price, 64)
+		fmt.Println(orderResponse)
 		s.Trade.Sell_price = &float_price
 		s.Trade.Sell_time = orderResponse.TransactTime
 		return err

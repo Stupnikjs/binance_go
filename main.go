@@ -57,6 +57,24 @@ func Processor(client *binance_connector.Client) {
 				BuyCondition:  RSIbuyCondition14,
 				SellCondition: RSIsellCondition14,
 			},
+			{
+				Asset:         "ETHUSDC",
+				Amount:        0.001,
+				BuyCondition:  RSIbuyCondition14,
+				SellCondition: RSIsellCondition14,
+			},
+			{
+				Asset:         "HBARUSDC",
+				Amount:        1000,
+				BuyCondition:  RSIbuyCondition14,
+				SellCondition: RSIsellCondition14,
+			},
+			{
+				Asset:         "LINKUSDC",
+				Amount:        40,
+				BuyCondition:  RSIbuyCondition14,
+				SellCondition: RSIsellCondition14,
+			},
 		},
 	}
 	robot.Run()

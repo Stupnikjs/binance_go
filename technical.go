@@ -54,7 +54,7 @@ func SMA(closingPrices []float64, period int) []float64 {
 	return SMA
 }
 
-func IsSMACrossOver(closingPrices []float64, sma []float64) bool {
+func IsMACrossOver(closingPrices []float64, sma []float64) bool {
 	if len(closingPrices) < 2 || len(sma) < 2 {
 		return false
 	}
@@ -74,7 +74,7 @@ func PairCrossOverSignal(client *binance_connector.Client, pair string, interval
 	klines := GetKlines(client, pair, interval, limit)
 	close := CloseFromKlines(klines)
 	sma := SMA(close, smaPeriod)
-	return IsSMACrossOver(close, sma)
+	return IsMACrossOver(close, sma)
 }
 
 func RSI(prices []float64, period int) []float64 {
@@ -149,4 +149,19 @@ func RSIstrat(client *binance_connector.Client, pair string, interval string, rs
 		return rsi[len(rsi)-1] >= math.Abs(float64(underOver))
 	}
 
+}
+
+func ExponetialMovingAverage(closingPrices []float64, period int) []float64 {
+	firstSMA := SMA(closingPrices, period)[0]
+	EMA := []float64{}
+	EMA = append(EMA, firstSMA)
+	EMAcoef := 2 / float64(period+1)
+	prevEMA := firstSMA
+	for i := period; i < len(closingPrices); i++ {
+		nextEMA := closingPrices[i]*float64(EMAcoef) + prevEMA*(1-EMAcoef)
+		prevEMA = nextEMA
+		EMA = append(EMA, nextEMA)
+
+	}
+	return EMA
 }
