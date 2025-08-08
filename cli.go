@@ -9,6 +9,7 @@ import (
 
 func Prompt() string {
 
+	fmt.Print(">:")
 	reader := bufio.NewReader(os.Stdin)
 
 	input, err := reader.ReadString('\n')

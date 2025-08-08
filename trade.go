@@ -26,7 +26,8 @@ type Trade struct {
 	Buy_price  *float64
 	Buy_time   int64
 	Sell_price *float64
-	Sell_time  any
+	Sell_time  int64
+	Status     int // 0 for not initiate // 1 for buy but not sell // 2 for sell
 }
 
 func (s *Strategy) Buy(client *binance_connector.Client) error {
@@ -45,9 +46,12 @@ func (s *Strategy) Buy(client *binance_connector.Client) error {
 		if err != nil {
 			log.Fatalf("Failed to unmarshal JSON to struct: %v", err)
 		}
+		trade := Trade{}
+		s.Trade = &trade
 		float_price, err := strconv.ParseFloat(orderResponse.Fills[0].Price, 64)
 		s.Trade.Buy_price = &float_price
 		s.Trade.Buy_time = orderResponse.TransactTime
+		s.Trade.Status = 1
 
 		return err
 
@@ -55,7 +59,7 @@ func (s *Strategy) Buy(client *binance_connector.Client) error {
 	return nil
 }
 func (s *Strategy) Sell(client *binance_connector.Client) error {
-	if s.Trade.Sell_price == nil {
+	if s.Trade.Status == 1 {
 		response, err := client.NewCreateOrderService().
 			Symbol(s.Asset).
 			Side("SELL").

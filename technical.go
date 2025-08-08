@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
@@ -150,9 +149,4 @@ func RSIstrat(client *binance_connector.Client, pair string, interval string, rs
 		return rsi[len(rsi)-1] >= math.Abs(float64(underOver))
 	}
 
-}
-
-func (t *Trade) SellAfter3min() bool {
-	now := time.Now().UnixMilli()
-	return now > (t.Buy_time + 180000)
 }

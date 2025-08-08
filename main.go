@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/joho/godotenv"
@@ -22,52 +23,42 @@ func main() {
 
 	// Initialize Binance client
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
-
-	// Example: Get account information
 	_ = client
+	// Processor(client)
 
-	//Processor(client)
 	for {
-		fmt.Print(">:")
+
 		cmd := Prompt()
-		fmt.Println(cmd)
+		arr := strings.Split(cmd, " ")
+		if arr[0] == "GET" {
+			balance, err := GetAssetBalance(client, arr[1])
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println(balance)
+			}
+		}
+		if arr[0] == "TRADE" {
+			Processor(client)
+		}
+
 	}
 
 }
 
 func Processor(client *binance_connector.Client) {
-	stratQueue := []Strategy{}
-	savedTrade := []Strategy{}
-	newStrat := Strategy{
-		Asset:         "BTCUSDC",
-		Amount:        0.001,
-		BuyCondition:  RSIbuyCondition14,
-		SellCondition: RSIsellCondition14,
+
+	robot := Bot{
+		client: client,
+		strategies: []*Strategy{
+			{
+				Asset:         "BTCUSDC",
+				Amount:        0.001,
+				BuyCondition:  RSIbuyCondition14,
+				SellCondition: RSIsellCondition14,
+			},
+		},
 	}
-	stratQueue = append(stratQueue, newStrat)
-	for len(savedTrade) <= 1 {
-		if newStrat.BuyCondition(client, newStrat.Asset, "1m") {
-			err := newStrat.Buy(client)
-			usdc_balance, _ := GetAssetBalance(client, "USDC")
-			log.Println(usdc_balance)
-			log.Println(newStrat.Trade)
-			if err != nil {
-				fmt.Println(err)
-			}
-
-		}
-		if newStrat.SellCondition(client, newStrat.Asset, "1m") {
-			err := newStrat.Sell(client)
-			if err != nil {
-				fmt.Println(err)
-			}
-			SaveTrade(newStrat)
-			usdc_balance, _ := GetAssetBalance(client, "USDC")
-			log.Println(usdc_balance)
-			savedTrade = append(savedTrade, newStrat)
-
-		}
-
-	}
+	robot.Run()
 
 }
