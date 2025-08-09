@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 
 	binance_connector "github.com/binance/binance-connector-go"
@@ -15,10 +14,11 @@ import (
 type Condition func(client *binance_connector.Client, pair string, interval string) bool
 
 type Strategy struct {
-	Asset         string
-	Amount        float64
-	BuyCondition  Condition
-	SellCondition Condition
+	Asset           string
+	Amount          float64
+	BuyCondition    Condition `json:"-"`
+	SellCondition   Condition `json:"-"`
+	TradeInProgress bool
 	*Trade
 }
 
@@ -27,31 +27,56 @@ type Trade struct {
 	Buy_time   int64
 	Sell_price *float64
 	Sell_time  int64
-	Status     int // 0 for not initiate // 1 for buy but not sell // 2 for sell
 }
 
-func (s *Strategy) Buy(client *binance_connector.Client) error {
-	if s.Trade == nil {
-		response, err := client.NewCreateOrderService().
-			Symbol(s.Asset).
-			Side("BUY").
-			Type("MARKET").
-			Quantity(s.Amount).
-			Do(context.Background())
+// decomposer fonction
 
-		// extract response to a struct
-		var orderResponse CreateOrderResponse
-		jsonBytes, err := json.Marshal(response)
-		err = json.Unmarshal(jsonBytes, &orderResponse)
+func (s *Strategy) BuildOrder(client *binance_connector.Client) (interface{}, error) {
+	return client.NewCreateOrderService().
+		Symbol(s.Asset).
+		Side("BUY").
+		Type("MARKET").
+		Quantity(s.Amount).
+		Do(context.Background())
+
+}
+
+func (s *Strategy) ParseResponse(response interface{}) (*CreateOrderResponse, error) {
+	var orderResponse CreateOrderResponse
+	jsonBytes, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(jsonBytes, &orderResponse)
+	if err != nil {
+		return nil, err
+	}
+	if len(orderResponse.Fills) == 0 {
+		return nil, fmt.Errorf(" received empty response ")
+	}
+	return &orderResponse, nil
+}
+func (s *Strategy) Buy(client *binance_connector.Client) error {
+	if !s.TradeInProgress {
+		response, err := s.BuildOrder(client)
+
 		if err != nil {
-			log.Fatalf("Failed to unmarshal JSON to struct: %v", err)
+			return err
 		}
+		orderResponse, err := s.ParseResponse(response)
+		if err != nil {
+			return err
+		}
+
 		trade := Trade{}
 		s.Trade = &trade
 		float_price, err := strconv.ParseFloat(orderResponse.Fills[0].Price, 64)
+		if err != nil {
+			return err
+		}
 		s.Trade.Buy_price = &float_price
 		s.Trade.Buy_time = orderResponse.TransactTime
-		s.Trade.Status = 1
+		s.TradeInProgress = true
 
 		return err
 
@@ -59,7 +84,7 @@ func (s *Strategy) Buy(client *binance_connector.Client) error {
 	return nil
 }
 func (s *Strategy) Sell(client *binance_connector.Client) error {
-	if s.Trade.Status == 1 {
+	if s.TradeInProgress {
 		response, err := client.NewCreateOrderService().
 			Symbol(s.Asset).
 			Side("SELL").
@@ -70,18 +95,25 @@ func (s *Strategy) Sell(client *binance_connector.Client) error {
 		// extract response to a struct
 		var orderResponse CreateOrderResponse
 		jsonBytes, err := json.Marshal(response)
+		if err != nil {
+			return err
+		}
 		err = json.Unmarshal(jsonBytes, &orderResponse)
 		if err != nil {
-			log.Fatalf("Failed to unmarshal JSON to struct: %v", err)
+			return err
 		}
-
 		if len(orderResponse.Fills) == 0 {
-			return fmt.Errorf("Fills empty")
+			return fmt.Errorf(" error buying asset ")
 		}
 		float_price, err := strconv.ParseFloat(orderResponse.Fills[0].Price, 64)
-		fmt.Println(orderResponse)
+		if err != nil {
+			return err
+		}
+
 		s.Trade.Sell_price = &float_price
 		s.Trade.Sell_time = orderResponse.TransactTime
+		s.TradeInProgress = false
+		err = SaveTrade(*s)
 		return err
 
 	}
