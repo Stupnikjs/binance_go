@@ -152,10 +152,16 @@ func RSIstrat(client *binance_connector.Client, pair string, interval string, rs
 }
 
 func ExponetialMovingAverage(closingPrices []float64, period int) []float64 {
+
+	if len(closingPrices) <= period {
+		return SMA(closingPrices, period)
+	}
+
 	firstSMA := SMA(closingPrices, period)[0]
 	EMA := []float64{}
+
 	EMA = append(EMA, firstSMA)
-	EMAcoef := 2 / float64(period+1)
+	EMAcoef := 2.0 / float64(period+1)
 	prevEMA := firstSMA
 	for i := period; i < len(closingPrices); i++ {
 		nextEMA := closingPrices[i]*float64(EMAcoef) + prevEMA*(1-EMAcoef)

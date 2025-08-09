@@ -1,8 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
-func TestSimpleMovingAverage(t *testing.T) {
+func TestSMA(t *testing.T) {
 	type testCase struct {
 		name        string
 		prices      []float64

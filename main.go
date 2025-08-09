@@ -25,9 +25,28 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
 
-	balance, _ := GetAssetBalance(client, "USDC")
-	fmt.Println(balance)
-	Processor(client)
+	strats := []StrategyStat{
+		{
+			Asset:     "HBARUSDC",
+			StratName: "RSI2575",
+			Interval:  "1h",
+			Ratio:     0,
+		}, {
+			Asset:     "ETHUSDC",
+			StratName: "RSI2575",
+			Interval:  "1h",
+			Ratio:     0,
+		}, {
+			Asset:     "XRPUSDC",
+			StratName: "RSI2575",
+			Interval:  "5m",
+			Ratio:     0,
+		},
+	}
+	for _, strat := range strats {
+		strat.SMATest(client)
+		fmt.Println(strat.Ratio)
+	}
 
 }
 
