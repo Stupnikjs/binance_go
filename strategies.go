@@ -18,8 +18,13 @@ type StrategyStat struct {
 
 
 // Strategy Tester 
-// 
-func (stat *StrategyStat) SMATest(client *binance_connector.Client, smallPeriod int, bigPeriod int) {
+/*
+
+
+*/
+
+
+func (stat *StrategyStat) StrategyTester(client *binance_connector.Client, smallPeriod int, bigPeriod int) {
 	small_sma_field := fmt.Sprintf("sma_%d", smallPeriod)
 	big_sma_field := fmt.Sprintf("sma_%d", bigPeriod)
 
