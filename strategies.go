@@ -45,8 +45,9 @@ func (strat *Strategy) StrategyTester(client *binance_connector.Client, smallPer
 		sellStamp int
 	}
 	closedTrade := []trade{}
+// modify to pass.Indicators 
 	klines := IndicatorstoKlines(GetKlines(client, strat.Asset, strat.Interval, 1000), smallPeriod, bigPeriod, 14)
-
+// type == "Mooving Average" 
 	var bigOverSmallPrev bool
 	t := trade{}
 	for _, k := range klines {
