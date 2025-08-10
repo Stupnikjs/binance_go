@@ -7,30 +7,34 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-
-
-type StrategyStat struct {
+type Strategy struct {
 	Asset     string
-	StratName string
 	Interval  string
 	Ratio     float64
+	Indicator Indicator
 }
 
-
-// Strategy Tester 
-/*
-Pass indicator like 
-Indicator {
- Name:  Ema 
- Type: "MovingAverage"
- Params map[string]int // short long
- 
+type Indicator struct {
+	Name   string
+	Type   string
+	Params map[string]int
 }
 
-*/
+var testStrategy = Strategy{
+	Asset:    "ETHUSDC",
+	Interval: "1h",
+	Ratio:    0,
+	Indicator: Indicator{
+		Name: "EMA",
+		Type: "Moving Average",
+		Params: map[string]int{
+			"short": 3,
+			"long":  10,
+		},
+	},
+}
 
-
-func (stat *StrategyStat) StrategyTester(client *binance_connector.Client, smallPeriod int, bigPeriod int) {
+func (strat *Strategy) StrategyTester(client *binance_connector.Client, smallPeriod int, bigPeriod int) {
 	small_sma_field := fmt.Sprintf("sma_%d", smallPeriod)
 	big_sma_field := fmt.Sprintf("sma_%d", bigPeriod)
 
@@ -41,7 +45,7 @@ func (stat *StrategyStat) StrategyTester(client *binance_connector.Client, small
 		sellStamp int
 	}
 	closedTrade := []trade{}
-	klines := IndicatorstoKlines(GetKlines(client, stat.Asset, stat.Interval, 1000), smallPeriod, bigPeriod, 14)
+	klines := IndicatorstoKlines(GetKlines(client, strat.Asset, strat.Interval, 1000), smallPeriod, bigPeriod, 14)
 
 	var bigOverSmallPrev bool
 	t := trade{}

@@ -13,7 +13,7 @@ import (
 
 type Condition func(client *binance_connector.Client, pair string, interval string) bool
 
-type Strategy struct {
+type Trader struct {
 	Asset           string
 	Amount          float64
 	BuyCondition    Condition `json:"-"`
@@ -31,7 +31,7 @@ type Trade struct {
 
 // decomposer fonction
 
-func (s *Strategy) BuildOrder(client *binance_connector.Client) (interface{}, error) {
+func (s *Trader) BuildOrder(client *binance_connector.Client) (interface{}, error) {
 	return client.NewCreateOrderService().
 		Symbol(s.Asset).
 		Side("BUY").
@@ -41,7 +41,7 @@ func (s *Strategy) BuildOrder(client *binance_connector.Client) (interface{}, er
 
 }
 
-func (s *Strategy) ParseResponse(response interface{}) (*CreateOrderResponse, error) {
+func (s *Trader) ParseResponse(response interface{}) (*CreateOrderResponse, error) {
 	var orderResponse CreateOrderResponse
 	jsonBytes, err := json.Marshal(response)
 	if err != nil {
@@ -56,7 +56,7 @@ func (s *Strategy) ParseResponse(response interface{}) (*CreateOrderResponse, er
 	}
 	return &orderResponse, nil
 }
-func (s *Strategy) Buy(client *binance_connector.Client) error {
+func (s *Trader) Buy(client *binance_connector.Client) error {
 	if !s.TradeInProgress {
 		response, err := s.BuildOrder(client)
 
@@ -83,7 +83,7 @@ func (s *Strategy) Buy(client *binance_connector.Client) error {
 	}
 	return nil
 }
-func (s *Strategy) Sell(client *binance_connector.Client) error {
+func (s *Trader) Sell(client *binance_connector.Client) error {
 	if s.TradeInProgress {
 		response, err := client.NewCreateOrderService().
 			Symbol(s.Asset).
@@ -120,7 +120,7 @@ func (s *Strategy) Sell(client *binance_connector.Client) error {
 	return nil
 }
 
-func (s *Strategy) GetGain(client *binance_connector.Client) (float64, error) {
+func (s *Trader) GetGain(client *binance_connector.Client) (float64, error) {
 	if s.Trade.Buy_price == nil || s.Trade.Sell_price == nil {
 		return 0, fmt.Errorf("Trade not closed")
 	}

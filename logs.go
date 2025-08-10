@@ -14,7 +14,7 @@ func CreateHistoryFile(fileName string) (*os.File, error) {
 	return os.OpenFile(fileName, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 }
 
-func SaveTrade(s Strategy) error {
+func SaveTrade(s Trader) error {
 	file, err := CreateHistoryFile("history.txt")
 
 	if err != nil {

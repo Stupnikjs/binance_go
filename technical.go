@@ -52,14 +52,14 @@ func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod 
 	big_sma_field := fmt.Sprintf("sma_%d", bigPeriod)
 	small_period_index := -smallPeriod
 	big_period_index := -bigPeriod
-	for _, k := range klines {
+	for i, k := range klines {
 		small_period_index += 1
 		big_period_index += 1
 		kl := Kline{
 			Kline_binance: k,
 			Indicators:    make(map[string]float64),
 		}
-
+		kl.Indicators["RSI"] = RSI[i]
 		if small_period_index >= 0 {
 			kl.Indicators[small_sma_field] = small_SMA[small_period_index]
 			if big_period_index >= 0 {
