@@ -9,6 +9,11 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
+type Kline struct {
+	Kline_binance *binance_connector.KlinesResponse
+	Indicators    map[string]float64
+}
+
 func GetKlines(client *binance_connector.Client, pair string, interval string, limit int) []*binance_connector.KlinesResponse {
 	klines, err := client.NewKlinesService().
 		Symbol(pair).
@@ -33,6 +38,40 @@ func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 
 	}
 	return closingPrices
+}
+
+func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod int, bigPeriod int, RSIcoef int) []Kline {
+	klineArr := []Kline{}
+	close := CloseFromKlines(klines)
+	small_SMA := SMA(close, smallPeriod)
+	big_SMA := SMA(close, bigPeriod)
+	RSI := RSI(close, RSIcoef)
+	fmt.Println(len(RSI), len(close))
+
+	small_sma_field := fmt.Sprintf("sma_%d", smallPeriod)
+	big_sma_field := fmt.Sprintf("sma_%d", bigPeriod)
+	small_period_index := -smallPeriod
+	big_period_index := -bigPeriod
+	for _, k := range klines {
+		small_period_index += 1
+		big_period_index += 1
+		kl := Kline{
+			Kline_binance: k,
+			Indicators:    make(map[string]float64),
+		}
+
+		if small_period_index >= 0 {
+			kl.Indicators[small_sma_field] = small_SMA[small_period_index]
+			if big_period_index >= 0 {
+				kl.Indicators[big_sma_field] = big_SMA[big_period_index]
+			}
+
+		}
+
+		klineArr = append(klineArr, kl)
+
+	}
+	return klineArr
 }
 
 func SMA(closingPrices []float64, period int) []float64 {
@@ -134,21 +173,6 @@ func RSI(prices []float64, period int) []float64 {
 
 	// Les premières (période) valeurs sont 0, on pourrait retourner une slice plus courte si désiré
 	return rsi
-}
-
-// underOver is positive if u check if RSI is above underOver
-// its negative if u check if RSI is under
-func RSIstrat(client *binance_connector.Client, pair string, interval string, rsiCoef int, underOver int) bool {
-	klines := GetKlines(client, pair, interval, 60)
-	close := CloseFromKlines(klines)
-	rsi := RSI(close, rsiCoef)
-	// fmt.Println("\n %%f", rsi[len(rsi)-1])
-	if underOver < 0 {
-		return rsi[len(rsi)-1] <= math.Abs(float64(underOver))
-	} else {
-		return rsi[len(rsi)-1] >= math.Abs(float64(underOver))
-	}
-
 }
 
 func ExponetialMovingAverage(closingPrices []float64, period int) []float64 {

@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/joho/godotenv"
@@ -24,6 +22,17 @@ func main() {
 	// Initialize Binance client
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
+	Processor(client)
+}
+
+func Processor(client *binance_connector.Client) {
+	klines := IndicatorstoKlines(GetKlines(client, "ETHUSDC", "1h", 1000), 9, 25, 14)
+
+	_ = klines
+}
+
+/*
+
 
 	strats := []StrategyStat{
 		{
@@ -48,48 +57,4 @@ func main() {
 		fmt.Println(strat.Ratio)
 	}
 
-}
-
-func Processor(client *binance_connector.Client) {
-
-	strategies := []*Strategy{
-		{
-			Asset:         "HBARUSDC",
-			Amount:        1000,
-			BuyCondition:  RSIbuyCondition14,
-			SellCondition: RSIsellCondition14,
-		},
-		{
-			Asset:         "ETHUSDC",
-			Amount:        0.1,
-			BuyCondition:  RSIbuyCondition14,
-			SellCondition: RSIsellCondition14,
-		},
-	}
-
-	totalTrade := len(strategies)
-
-	for totalTrade > 0 {
-
-		for _, s := range strategies {
-			if !s.TradeInProgress && s.BuyCondition(client, s.Asset, "1m") {
-				err := s.Buy(client)
-				if err != nil {
-					fmt.Println(err)
-				}
-
-			}
-
-			time.Sleep(50 * time.Second)
-
-			if s.TradeInProgress && s.BuyCondition(client, s.Asset, "1m") {
-				err := s.Sell(client)
-				if err != nil {
-					fmt.Println(err)
-				}
-
-			}
-
-		}
-	}
-}
+*/

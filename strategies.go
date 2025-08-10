@@ -2,16 +2,10 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
-
-func RSIbuyCondition14(client *binance_connector.Client, pair string, interval string) bool {
-	return RSIstrat(client, pair, interval, 14, -25)
-}
-func RSIsellCondition14(client *binance_connector.Client, pair string, interval string) bool {
-	return RSIstrat(client, pair, interval, 14, 75)
-}
 
 func EMAcrossOver(client *binance_connector.Client, pair string, EMAcoefShort int, EMAcoefLong int, over bool) bool {
 	klines := GetKlines(client, pair, "1m", EMAcoefLong*2)
@@ -42,41 +36,52 @@ type StrategyStat struct {
 	Ratio     float64
 }
 
-func (stat *StrategyStat) SMATest(client *binance_connector.Client) {
+func (stat *StrategyStat) SMATest(client *binance_connector.Client, smallPeriod int, bigPeriod int) {
+	small_sma_field := fmt.Sprintf("sma_%d", smallPeriod)
+	big_sma_field := fmt.Sprintf("sma_%d", bigPeriod)
 
 	type trade struct {
 		buyPrice  float64
+		buyStamp  int
 		sellPrice float64
+		sellStamp int
 	}
 	closedTrade := []trade{}
-	klines := GetKlines(client, stat.Asset, stat.Interval, 1000)
-	close := CloseFromKlines(klines)
+	klines := IndicatorstoKlines(GetKlines(client, stat.Asset, stat.Interval, 1000), smallPeriod, bigPeriod, 14)
 
-	sma_9 := SMA(close, 9)
-	sma_20 := SMA(close, 20)
+	var bigOverSmallPrev bool
+	t := trade{}
+	for _, k := range klines {
+		if _, ok := k.Indicators[small_sma_field]; !ok {
+			continue
+		}
+		if _, ok := k.Indicators[big_sma_field]; !ok {
+			continue
+		}
 
-	sma_9_alligned := sma_9[11:]
-	close_alligned := close[19:]
-
-	prev := sma_9_alligned[0] >= sma_20[0]
-
-	curTrade := trade{}
-	for i := 1; i < len(close_alligned); i++ {
-
-		crossover := sma_9_alligned[i] > sma_20[i]
-		crossunder := sma_9_alligned[i] < sma_20[i]
-		if crossover && !prev && curTrade.buyPrice == 0 {
-			curTrade.buyPrice = close_alligned[i]
+		bigOverSmall := k.Indicators[small_sma_field] < k.Indicators[big_sma_field]
+		if !bigOverSmall && bigOverSmallPrev {
+			f_close, err := strconv.ParseFloat(k.Kline_binance.Close, 64)
+			if err != nil {
+				fmt.Println(err)
+			}
+			t.buyPrice = f_close
+			t.buyStamp = int(k.Kline_binance.CloseTime)
 
 		}
-		if crossunder && prev && curTrade.buyPrice != 0 {
-			curTrade.sellPrice = close_alligned[i]
-			closedTrade = append(closedTrade, curTrade)
-			curTrade = trade{}
-
+		if bigOverSmall && !bigOverSmallPrev && t.buyStamp != 0 {
+			f_close, err := strconv.ParseFloat(k.Kline_binance.Close, 64)
+			if err != nil {
+				fmt.Println(err)
+			}
+			t.sellPrice = f_close
+			t.sellStamp = int(k.Kline_binance.CloseTime)
+			closedTrade = append(closedTrade, t)
+			t = trade{}
 		}
-		prev = crossover
+		bigOverSmallPrev = k.Indicators[small_sma_field] < k.Indicators[big_sma_field]
 	}
+
 	prev_ratio := 1.0
 	ratio := 1.0
 	for _, t := range closedTrade {
@@ -86,3 +91,6 @@ func (stat *StrategyStat) SMATest(client *binance_connector.Client) {
 	}
 	fmt.Println(ratio)
 }
+
+// underOver is positive if u check if RSI is above underOver
+// its negative if u check if RSI is under
