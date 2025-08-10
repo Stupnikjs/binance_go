@@ -19,7 +19,13 @@ type StrategyStat struct {
 
 // Strategy Tester 
 /*
-
+Pass indicator like 
+Indicator {
+ Name:  Ema 
+ Type: "MovingAverage"
+ Params map[string]int // short long
+ 
+}
 
 */
 
