@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -22,39 +24,34 @@ func main() {
 	// Initialize Binance client
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
-	Processor(client)
-}
 
-func Processor(client *binance_connector.Client) {
-	klines := IndicatorstoKlines(GetKlines(client, "ETHUSDC", "1h", 1000), 9, 25, 14)
-
-	_ = klines
-}
-
-/*
-
-
-	strats := []StrategyStat{
-		{
-			Asset:     "HBARUSDC",
-			StratName: "RSI2575",
-			Interval:  "1h",
-			Ratio:     0,
-		}, {
-			Asset:     "ETHUSDC",
-			StratName: "RSI2575",
-			Interval:  "1h",
-			Ratio:     0,
-		}, {
-			Asset:     "XRPUSDC",
-			StratName: "RSI2575",
-			Interval:  "5m",
-			Ratio:     0,
+	var testStrategy = Strategy{
+		Asset:    "ETHUSDC",
+		Interval: "2h",
+		Filters:  []Filter{},
+		Main: Signal{
+			Name: "EMA",
+			Type: "Moving Average",
+			Params: map[string]int{
+				"short": 9,
+				"long":  20,
+			},
 		},
 	}
-	for _, strat := range strats {
-		strat.SMATest(client)
-		fmt.Println(strat.Ratio)
+	result := testStrategy.StrategyTester(client)
+
+	jsonBytes, err := json.Marshal(result)
+
+	file, err := os.OpenFile("startReport.json", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	file.Write(jsonBytes)
+	if err != nil {
+		fmt.Println(err)
 	}
 
-*/
+	defer file.Close()
+
+}

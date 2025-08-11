@@ -40,16 +40,21 @@ func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	return closingPrices
 }
 
-func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod int, bigPeriod int, RSIcoef int) []Kline {
+func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod int, bigPeriod int, RSIcalccoef int) []Kline {
 	klineArr := []Kline{}
 	close := CloseFromKlines(klines)
-	small_SMA := SMA(close, smallPeriod)
-	big_SMA := SMA(close, bigPeriod)
-	RSI := RSI(close, RSIcoef)
-	fmt.Println(len(RSI), len(close))
+	small_SMA := SMAcalc(close, smallPeriod)
+	big_SMA := SMAcalc(close, bigPeriod)
+	small_EMA := EMAcalc(close, smallPeriod)
+	big_EMA := EMAcalc(close, bigPeriod)
+	RSIcalc := RSIcalc(close, RSIcalccoef)
 
 	small_sma_field := fmt.Sprintf("sma_%d", smallPeriod)
 	big_sma_field := fmt.Sprintf("sma_%d", bigPeriod)
+
+	small_ema_field := fmt.Sprintf("ema_%d", smallPeriod)
+	big_ema_field := fmt.Sprintf("ema_%d", bigPeriod)
+
 	small_period_index := -smallPeriod
 	big_period_index := -bigPeriod
 	for i, k := range klines {
@@ -59,11 +64,14 @@ func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod 
 			Kline_binance: k,
 			Indicators:    make(map[string]float64),
 		}
-		kl.Indicators["RSI"] = RSI[i]
+		kl.Indicators["RSIcalc"] = RSIcalc[i]
 		if small_period_index >= 0 {
 			kl.Indicators[small_sma_field] = small_SMA[small_period_index]
+			kl.Indicators[small_ema_field] = small_EMA[small_period_index]
+
 			if big_period_index >= 0 {
 				kl.Indicators[big_sma_field] = big_SMA[big_period_index]
+				kl.Indicators[big_ema_field] = big_EMA[big_period_index]
 			}
 
 		}
@@ -74,7 +82,7 @@ func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod 
 	return klineArr
 }
 
-func SMA(closingPrices []float64, period int) []float64 {
+func SMAcalc(closingPrices []float64, period int) []float64 {
 	var SMA []float64
 	closingPriceSlice := closingPrices
 	if len(closingPrices) < period {
@@ -93,30 +101,7 @@ func SMA(closingPrices []float64, period int) []float64 {
 	return SMA
 }
 
-func IsMACrossOver(closingPrices []float64, sma []float64) bool {
-	if len(closingPrices) < 2 || len(sma) < 2 {
-		return false
-	}
-
-	if closingPrices[len(closingPrices)-2] > sma[len(sma)-2] {
-		// price already above sma
-		return false
-	}
-	if closingPrices[len(closingPrices)-2] < sma[len(sma)-2] &&
-		closingPrices[len(closingPrices)-1] >= sma[len(sma)-1] {
-		return true
-	}
-	return false
-}
-
-func PairCrossOverSignal(client *binance_connector.Client, pair string, interval string, limit int, smaPeriod int) bool {
-	klines := GetKlines(client, pair, interval, limit)
-	close := CloseFromKlines(klines)
-	sma := SMA(close, smaPeriod)
-	return IsMACrossOver(close, sma)
-}
-
-func RSI(prices []float64, period int) []float64 {
+func RSIcalc(prices []float64, period int) []float64 {
 	// Le RSI ne peut pas être calculé si le nombre de prix est inférieur à la période.
 	if len(prices) <= period {
 		return nil
@@ -149,8 +134,8 @@ func RSI(prices []float64, period int) []float64 {
 	avgGain /= float64(period)
 	avgLoss /= float64(period)
 
-	// Étape 4 : Calculer le premier RS et le premier RSI
-	// Le premier RSI est stocké à l'index `period`
+	// Étape 4 : Calculer le premier RS et le premier RSIcalc
+	// Le premier RSIcalc est stocké à l'index `period`
 	if avgLoss == 0 {
 		rsi[period] = 100 // Pour éviter la division par zéro
 	} else {
@@ -158,7 +143,7 @@ func RSI(prices []float64, period int) []float64 {
 		rsi[period] = 100 - (100 / (1 + rs))
 	}
 
-	// Étape 5 : Calculer les RSI suivants avec la méthode de lissage
+	// Étape 5 : Calculer les RSIcalc suivants avec la méthode de lissage
 	for i := period + 1; i < len(prices); i++ {
 		avgGain = ((avgGain * float64(period-1)) + gains[i]) / float64(period)
 		avgLoss = ((avgLoss * float64(period-1)) + losses[i]) / float64(period)
@@ -175,13 +160,13 @@ func RSI(prices []float64, period int) []float64 {
 	return rsi
 }
 
-func ExponetialMovingAverage(closingPrices []float64, period int) []float64 {
+func EMAcalc(closingPrices []float64, period int) []float64 {
 
 	if len(closingPrices) <= period {
-		return SMA(closingPrices, period)
+		return SMAcalc(closingPrices, period)
 	}
 
-	firstSMA := SMA(closingPrices, period)[0]
+	firstSMA := SMAcalc(closingPrices, period)[0]
 	EMA := []float64{}
 
 	EMA = append(EMA, firstSMA)
