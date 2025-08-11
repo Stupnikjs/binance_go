@@ -134,7 +134,17 @@ func (strat *Strategy) StrategyTester(client *binance_connector.Client) Strategy
 
 func (strat *Strategy) StrategyApply(client *binance_connector.Client) {
     
+   
+
    // create loop 
+
+   
+   for {
+
+
+
+
+   } 
    // create limit 
    // build klines
    // check for buy signal 
