@@ -25,7 +25,7 @@ var testStrategy = Strategy{
 	Asset:    "ETHUSDC",
 	Interval: "1h",
 	Ratio:    0,
-	Indicator: Indicator{
+	Main: Signal{
 		Name: "EMA",
 		Type: "Moving Average",
 		Params: map[string]int{
