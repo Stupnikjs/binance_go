@@ -51,7 +51,7 @@ type Trader struct {
 }
 
 type StrategyResult struct {
-	StartStamp int
+	StartStamp int // BORDERS OF THE SAMPLE TESTED
 	EndStamp   int
 	Ratio      float64
 	Strategy   *Strategy

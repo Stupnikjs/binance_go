@@ -27,10 +27,10 @@ func main() {
 
 	var testStrategy = Strategy{
 		Asset:    "ETHUSDC",
-		Interval: "2h",
+		Interval: "1h",
 		Filters:  []Filter{},
 		Main: Signal{
-			Name: "EMA",
+			Name: "SMA",
 			Type: "Moving Average",
 			Params: map[string]int{
 				"short": 9,
