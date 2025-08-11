@@ -12,10 +12,10 @@ type Strategy struct {
 	Interval  string
 	Ratio     float64
  Filters  []Filters
-	Main    
+	Main  Signal   
 }
 
-type Indicator struct {
+type Signal struct {
 	Name   string
 	Type   string
 	Params map[string]int
