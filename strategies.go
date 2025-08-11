@@ -133,7 +133,12 @@ func (strat *Strategy) StrategyTester(client *binance_connector.Client) Strategy
 // systeme de mail 
 
 func (strat *Strategy) StrategyApply(client *binance_connector.Client) {
-
-
+    
+   // create loop 
+   // create limit 
+   // build klines
+   // check for buy signal 
+   // build trade 
+   // check for sell signal 
 
 }
