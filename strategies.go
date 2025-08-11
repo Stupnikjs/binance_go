@@ -11,7 +11,8 @@ type Strategy struct {
 	Asset     string
 	Interval  string
 	Ratio     float64
-	Indicator Indicator
+ Filters  []Filters
+	Main    
 }
 
 type Indicator struct {
