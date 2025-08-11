@@ -129,4 +129,11 @@ func (strat *Strategy) StrategyTester(client *binance_connector.Client) Strategy
 
 // underOver is positive if u check if RSI is above underOver
 // its negative if u check if RSI is under
-func (strat *Strategy) StrategyDo(client *binance_connector.Client)
+
+// systeme de mail 
+
+func (strat *Strategy) StrategyApply(client *binance_connector.Client) {
+
+
+
+}
