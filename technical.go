@@ -37,6 +37,8 @@ type Kline struct {
 
 // query upper Intervals Coefs ex RSI_1h .. 
 
+// volume weighted Average Price 
+
 func GetKlines(client *binance_connector.Client, pair string, interval string, limit int) []*binance_connector.KlinesResponse {
 	klines, err := client.NewKlinesService().
 		Symbol(pair).
