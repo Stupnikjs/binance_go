@@ -30,11 +30,14 @@ const Intervals = []string {
 
 
 type Kline struct {
-	Kline_binance *binance_connector.KlinesResponse
+	Kline_binance
+ Interval string 
+ *binance_connector.KlinesResponse
 	Indicators    map[string]float64
 }
 
 
+// Kline get upper interval
 // query upper Intervals Coefs ex RSI_1h .. 
 
 // volume weighted Average Price 
@@ -51,6 +54,8 @@ func GetKlines(client *binance_connector.Client, pair string, interval string, l
 
 	return klines
 }
+
+
 
 func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	closingPrices := make([]float64, len(klines))
