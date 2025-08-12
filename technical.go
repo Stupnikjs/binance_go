@@ -34,6 +34,9 @@ type Kline struct {
 	Indicators    map[string]float64
 }
 
+
+// query upper Intervals Coefs ex RSI_1h .. 
+
 func GetKlines(client *binance_connector.Client, pair string, interval string, limit int) []*binance_connector.KlinesResponse {
 	klines, err := client.NewKlinesService().
 		Symbol(pair).
