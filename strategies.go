@@ -311,6 +311,11 @@ func (t *Trader) GetGain(client *binance_connector.Client) (float64, error) {
 	return gain, nil
 }
 
+
+
+func StrategyLab(){}
+
+
 func GetAssetBalance(client *binance_connector.Client, asset string) (float64, error) {
 
 	account, err := client.NewGetAccountService().Do(context.Background())
@@ -322,3 +327,6 @@ func GetAssetBalance(client *binance_connector.Client, asset string) (float64, e
 	}
 	return 0, err
 }
+
+
+
