@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 
@@ -25,33 +23,27 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
 
-	var testStrategy = Strategy{
-		Asset:    "ETHUSDC",
-		Interval: "1h",
-		Filters:  []Filter{},
-		Main: Signal{
-			Name: "SMA",
-			Type: "Moving Average",
-			Params: map[string]int{
-				"short": 9,
-				"long":  20,
+	var long = []int{20, 21, 22, 23, 24, 25}
+	var short = []int{7, 8, 9, 10, 11, 12}
+
+	for i, _ := range long {
+
+		testStrategy := Strategy{
+			Asset:    "ETHUSDC",
+			Interval: "5m",
+			Filters:  []Filter{},
+			Main: Signal{
+				Name: "EMA",
+				Type: "Moving Average",
+				Params: map[string]int{
+					"short": short[i],
+					"long":  long[i],
+				},
 			},
-		},
+		}
+		result := testStrategy.StrategyTester(client)
+		result.AppendToHistory()
+
 	}
-	result := testStrategy.StrategyTester(client)
-
-	jsonBytes, err := json.Marshal(result)
-
-	file, err := os.OpenFile("startReport.json", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-	file.Write(jsonBytes)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	defer file.Close()
 
 }
