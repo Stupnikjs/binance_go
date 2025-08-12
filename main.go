@@ -26,11 +26,9 @@ func main() {
 	var long = []int{20, 21, 22, 23, 24, 25}
 	var short = []int{7, 8, 9, 10, 11, 12}
 
+	// double boucle pour trouver meilleurs
 
- // double boucle pour trouver meilleurs
-   coef 
-
- // lab.go pour analyser les données 
+	// lab.go pour analyser les données
 
 	for i, _ := range long {
 

@@ -11,15 +11,7 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-const (
-	RSI Indicator = "RSI"
-	SMA Indicator = "SMA"
-	EMA Indicator = "EMA"
-	VOL Indicator = "VOL"
-)
-
 type Indicator string
-
 type Strategy struct {
 	Asset    string
 	Amount   float64

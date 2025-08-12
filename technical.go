@@ -9,58 +9,68 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
+const (
+	RSI Indicator = "RSI"
+	VOL Indicator = "VOL"
+	SMA Indicator = "SMA"
+	EMA Indicator = "EMA"
+)
+
+type Interval string
 
 const (
-   RSI 
-   VOL
-   
+	m1  Interval = "1m"
+	m5  Interval = "5m"
+	m15 Interval = "15m"
+	m30 Interval = "30m"
+	h1  Interval = "1h"
+	h2  Interval = "2h"
+	h4  Interval = "4h"
+)
 
-
-
-
-
-
+ var Interv = []Interval{m1,m5, m15, m30, h1, h2, h4 }
+func findIntervalIndex(inter Interval) (int, ,error) {
+	for i, in := range Interv {
+		if in == inter {
+			return i 
+		}
+	}
+	return fmt.Errorf("Error occurs in findIntervalIndex")
 }
 
+type Indicators map[Indicator]float64
 
-
-const Intervals = []string {
- "1m", "5m" ,"15m", "30m" , "1h" , "2h", "4h" 
-}
-
-
-type mapKline map[string][]*binance_connector.KlinesResponse
-
+type MapKline map[Interval][]*binance_connector.KlinesResponse
 
 type Kline struct {
-	Kline_binance
- Interval string 
- *binance_connector.KlinesResponse
-	Indicators    map[string]float64
+	MainInterval  Interval
+	Kline_binance *binance_connector.KlinesResponse
+	IndicatorsMap map[Interval]Indicators
 }
-
 
 // Kline get upper interval
-// query upper Intervals Coefs ex RSI_1h .. 
+// query upper Intervals Coefs ex RSI_1h ..
 
-// volume weighted Average Price 
+// volume weighted Average Price
 
-func GetKlines(client *binance_connector.Client, pair string, interval string, limit int) []*binance_connector.KlinesResponse {
-	klines, err := client.NewKlinesService().
-		Symbol(pair).
-		Interval(interval).
-		Limit(limit).
-		Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
+func BuildMapKline(client *binance_connector.Client, pair string) MapKline {
+	mapK := make(MapKline)
+	for _, i := range Interv {
+		klines, err := client.NewKlinesService().
+			Symbol(pair).
+			Interval(string(i)).
+			Limit(1000).
+			Do(context.Background())
+		if err != nil {
+			fmt.Println(err)
+		}
+		mapK[i] = klines
+
 	}
-
-	return klines
+	return mapK
 }
 
-
-
-// refactor 
+// refactor
 func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	closingPrices := make([]float64, len(klines))
 	for i, kline := range klines {
@@ -74,45 +84,48 @@ func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	return closingPrices
 }
 
+// Kline query upper period coef
 
-
-// Kline query upper period coef 
-
-
-
-// refactor 
-func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod int, bigPeriod int, RSIcalccoef int) []Kline {
+// refactor
+func IndicatorstoKlines(mapK MapKline, interval Interval, smallPeriod int, bigPeriod int, RSIcoef int) []Kline {
 	klineArr := []Kline{}
-	close := CloseFromKlines(klines)
+	mainklines := mapK[interval]
+	close := CloseFromKlines(mainklines)
+
 	small_SMA := SMAcalc(close, smallPeriod)
 	big_SMA := SMAcalc(close, bigPeriod)
 	small_EMA := EMAcalc(close, smallPeriod)
 	big_EMA := EMAcalc(close, bigPeriod)
-	RSIcalc := RSIcalc(close, RSIcalccoef)
-
-	small_sma_field := fmt.Sprintf("sma_%d", smallPeriod)
-	big_sma_field := fmt.Sprintf("sma_%d", bigPeriod)
-
-	small_ema_field := fmt.Sprintf("ema_%d", smallPeriod)
-	big_ema_field := fmt.Sprintf("ema_%d", bigPeriod)
+	RSIcalc := RSIcalc(close, RSIcoef)
 
 	small_period_index := -smallPeriod
 	big_period_index := -bigPeriod
-	for i, k := range klines {
+	for i, k := range mainklines {
 		small_period_index += 1
 		big_period_index += 1
 		kl := Kline{
 			Kline_binance: k,
-			Indicators:    make(map[string]float64),
+			MainInterval:  interval,
+			IndicatorsMap: make(map[Interval]Indicators),
 		}
-		kl.Indicators["RSIcalc"] = RSIcalc[i]
+		// calulate the RSI or else of the klines up in timeframe that include this candle timeframe
+		// recalculate only if close time of upper kline is bigger than  close time of k  
+		upperIntervalIndex := findIntervalIndex(kl.MainInterval) + 1
+		upperInterval := Interv[upperIntervalIndex]
+		upperKlines := mapK[upperInterval] 
+		
+		RSIupper := RSIcalc(CloseFromKlines(upperKlines))
+		
+
+		kl.IndicatorsMap[kl.MainInterval]["RSI"] = RSIcalc[i]
 		if small_period_index >= 0 {
-			kl.Indicators[small_sma_field] = small_SMA[small_period_index]
-			kl.Indicators[small_ema_field] = small_EMA[small_period_index]
+			kl.IndicatorsMap[kl.MainInterval][SMA] = small_SMA[small_period_index]
+			kl.IndicatorsMap[kl.MainInterval][EMA] = small_EMA[small_period_index]
 
 			if big_period_index >= 0 {
-				kl.Indicators[big_sma_field] = big_SMA[big_period_index]
-				kl.Indicators[big_ema_field] = big_EMA[big_period_index]
+				kl.IndicatorsMap[kl.MainInterval][SMA] = big_SMA[big_period_index]
+				kl.IndicatorsMap[kl.MainInterval][EMA] = big_EMA[big_period_index]
+
 			}
 
 		}
