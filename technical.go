@@ -29,6 +29,9 @@ const Intervals = []string {
 }
 
 
+type mapKline map[string][]*binance_connector.KlinesResponse
+
+
 type Kline struct {
 	Kline_binance
  Interval string 
