@@ -9,6 +9,26 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
+
+const (
+   RSI 
+   VOL
+   
+
+
+
+
+
+
+}
+
+
+
+const Intervals = []string {
+ "1m", "5m" ,"15m", "30m" , "1h" , "2h", "4h" 
+}
+
+
 type Kline struct {
 	Kline_binance *binance_connector.KlinesResponse
 	Indicators    map[string]float64
@@ -39,6 +59,11 @@ func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	}
 	return closingPrices
 }
+
+
+
+// Kline query upper period coef 
+
 
 func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod int, bigPeriod int, RSIcalccoef int) []Kline {
 	klineArr := []Kline{}
