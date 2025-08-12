@@ -57,6 +57,7 @@ func GetKlines(client *binance_connector.Client, pair string, interval string, l
 
 
 
+// refactor 
 func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	closingPrices := make([]float64, len(klines))
 	for i, kline := range klines {
@@ -75,6 +76,8 @@ func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 // Kline query upper period coef 
 
 
+
+// refactor 
 func IndicatorstoKlines(klines []*binance_connector.KlinesResponse, smallPeriod int, bigPeriod int, RSIcalccoef int) []Kline {
 	klineArr := []Kline{}
 	close := CloseFromKlines(klines)
