@@ -50,6 +50,32 @@ type Trader struct {
 	Sell_time       int64
 }
 
+func (s *Strategy) InitTrader() Trader {
+	return Trader{
+		Asset:           s.Asset,
+		Amount:          s.Amount,
+		TradeInProgress: false,
+	}
+}
+func (s *Strategy) InitResult(klines []*binance_connector.KlinesResponse) StrategyResult {
+	result := StrategyResult{}
+	result.StartStamp = int(klines[0].CloseTime)
+	result.EndStamp = int(klines[len(klines)-1].CloseTime)
+	return result
+}
+
+func (s *Strategy) GetMAFields() (string, string, error) {
+
+	short_field := fmt.Sprintf("%s_%d", strings.ToLower(s.Main.Name), s.Main.Params["short"])
+	long_field := fmt.Sprintf("%s_%d", strings.ToLower(s.Main.Name), s.Main.Params["long"])
+	var err error
+	if short_field == "" || long_field == "" {
+		err = fmt.Errorf("Error parsing MA field")
+	}
+
+	return short_field, long_field, err
+}
+
 type StrategyResult struct {
 	StartStamp int // BORDERS OF THE SAMPLE TESTED
 	EndStamp   int
@@ -80,69 +106,55 @@ type Fill struct {
 	CommissionAsset string `json:"commissionAsset"`
 }
 
-func (strat *Strategy) StrategyTester(client *binance_connector.Client) StrategyResult {
+func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResult {
+	klinesClean := GetKlines(client, s.Asset, s.Interval, 1000)
+	result := s.InitResult(klinesClean)
+	closedTrade := []Trader{}
 
-	type trade struct {
-		buyPrice  float64
-		buyStamp  int
-		sellPrice float64
-		sellStamp int
-	}
-
-	closedTrade := []trade{}
-	klinesClean := GetKlines(client, strat.Asset, strat.Interval, 1000)
-	result := StrategyResult{}
-	result.StartStamp = int(klinesClean[0].CloseTime)
-	result.EndStamp = int(klinesClean[len(klinesClean)-1].CloseTime)
-	if strat.Main.Type == "Moving Average" {
+	if s.Main.Type == "Moving Average" {
 		klines := IndicatorstoKlines(
 			klinesClean,
-			strat.Main.Params["short"], strat.Main.Params["long"],
+			s.Main.Params["short"], s.Main.Params["long"],
 			14)
-		if strat.Main.Name != "SMA" && strat.Main.Name != "EMA" {
+		if s.Main.Name != "SMA" && s.Main.Name != "EMA" {
 			log.Fatal("wrong strat name ")
 		}
-		var small_field, big_field string
-		if strat.Main.Name == "SMA" {
-			small_field = fmt.Sprintf("sma_%d", strat.Main.Params["short"])
-			big_field = fmt.Sprintf("sma_%d", strat.Main.Params["long"])
-		}
-		if strat.Main.Name == "EMA" {
-			small_field = fmt.Sprintf("ema_%d", strat.Main.Params["short"])
-			big_field = fmt.Sprintf("ema_%d", strat.Main.Params["long"])
-		}
+		small_field, long_field, err := s.GetMAFields()
 
+		if err != nil {
+			fmt.Println(err)
+		}
 		var bigOverSmallPrev bool
-		t := trade{}
+		t := s.InitTrader()
 		for _, k := range klines {
 			if _, ok := k.Indicators[small_field]; !ok {
 				continue
 			}
-			if _, ok := k.Indicators[big_field]; !ok {
+			if _, ok := k.Indicators[long_field]; !ok {
 				continue
 			}
 
-			bigOverSmall := k.Indicators[small_field] < k.Indicators[big_field]
+			bigOverSmall := k.Indicators[small_field] < k.Indicators[long_field]
 			if !bigOverSmall && bigOverSmallPrev {
 				f_close, err := strconv.ParseFloat(k.Kline_binance.Close, 64)
 				if err != nil {
 					fmt.Println(err)
 				}
-				t.buyPrice = f_close
-				t.buyStamp = int(k.Kline_binance.CloseTime)
+				t.Buy_price = f_close
+				t.Buy_time = int64(k.Kline_binance.CloseTime)
 
 			}
-			if bigOverSmall && !bigOverSmallPrev && t.buyStamp != 0 {
+			if bigOverSmall && !bigOverSmallPrev && t.Buy_time != 0 {
 				f_close, err := strconv.ParseFloat(k.Kline_binance.Close, 64)
 				if err != nil {
 					fmt.Println(err)
 				}
-				t.sellPrice = f_close
-				t.sellStamp = int(k.Kline_binance.CloseTime)
+				t.Sell_price = f_close
+				t.Sell_time = int64(k.Kline_binance.CloseTime)
 				closedTrade = append(closedTrade, t)
-				t = trade{}
+				t = Trader{}
 			}
-			bigOverSmallPrev = k.Indicators[small_field] < k.Indicators[big_field]
+			bigOverSmallPrev = k.Indicators[small_field] < k.Indicators[long_field]
 		}
 
 	}
@@ -154,12 +166,12 @@ func (strat *Strategy) StrategyTester(client *binance_connector.Client) Strategy
 	prev_ratio := 1.0
 	ratio := 1.0
 	for _, t := range closedTrade {
-		ratio = (t.sellPrice / t.buyPrice) * prev_ratio
+		ratio = (t.Sell_price / t.Buy_price) * prev_ratio
 		prev_ratio = ratio
 
 	}
 	result.Ratio = ratio
-	result.Strategy = strat
+	result.Strategy = s
 	return result
 }
 
@@ -168,14 +180,22 @@ func (strat *Strategy) StrategyTester(client *binance_connector.Client) Strategy
 
 // systeme de mail
 
-func (s *Strategy) StrategyApply(client *binance_connector.Client) {
+func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 
-	// create loop
+	tradeOver := []Trader{}
 	result := StrategyResult{}
 	result.Ratio = 1
 
-	short_field := fmt.Sprintf("%s_%d", strings.ToLower(s.Main.Name), s.Main.Params["short"])
-	long_field := fmt.Sprintf("%s_%d", strings.ToLower(s.Main.Name), s.Main.Params["long"])
+	t := Trader{
+		Asset:           s.Asset,
+		Amount:          s.Amount,
+		TradeInProgress: false,
+	}
+
+	short_field, long_field, err := s.GetMAFields()
+	if err != nil {
+		return err
+	}
 
 	for result.Ratio > 0.5 {
 
@@ -184,33 +204,24 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) {
 		bearishPrev := kline[len(kline)-2].Indicators[short_field] < kline[len(kline)-2].Indicators[long_field]
 		bullish := kline[len(kline)-2].Indicators[short_field] >= kline[len(kline)-2].Indicators[long_field]
 
-		t := Trader{
-			Asset:           s.Asset,
-			Amount:          s.Amount,
-			TradeInProgress: false,
-		}
 		if bearishPrev && bullish && t.Buy_time == 0 {
 			err := t.Buy(client)
 			if err != nil {
-				fmt.Println(err)
+
+				return err
 			}
 		}
 		if !bearishPrev && !bullish && t.Buy_time != 0 {
 			err := t.Sell(client)
 			if err != nil {
-				fmt.Println(err)
+				return err
 			}
-			// SAVE TRADE
-			// reset trade
+			tradeOver = append(tradeOver, t)
+			t = Trader{}
 		}
 
 	}
-	// create limit
-	// build klines
-	// check for buy signal
-	// build trade
-	// check for sell signal
-
+	return nil
 }
 
 // decomposer fonction
@@ -311,10 +322,7 @@ func (t *Trader) GetGain(client *binance_connector.Client) (float64, error) {
 	return gain, nil
 }
 
-
-
-func StrategyLab(){}
-
+func StrategyLab() {}
 
 func GetAssetBalance(client *binance_connector.Client, asset string) (float64, error) {
 
@@ -327,6 +335,3 @@ func GetAssetBalance(client *binance_connector.Client, asset string) (float64, e
 	}
 	return 0, err
 }
-
-
-
