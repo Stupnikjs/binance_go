@@ -39,9 +39,9 @@ func main() {
 			Main: Signal{
 				Name: "EMA",
 				Type: "Moving Average",
-				Params: map[string]int{
-					"short": short[i],
-					"long":  long[i],
+				Params: map[Indicator]int{
+					sma:    short[i],
+					"long": long[i],
 				},
 			},
 		}

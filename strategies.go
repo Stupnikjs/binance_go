@@ -114,46 +114,38 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 	closedTrade := []Trader{}
 
 	if s.Main.Type == "Moving Average" {
-
 		if s.Main.Name != "SMA" && s.Main.Name != "EMA" {
 			log.Fatal("wrong strat name ")
 		}
-		small_field, long_field, err := s.GetMAFields()
 
-		if err != nil {
-			fmt.Println(err)
-		}
 		var bigOverSmallPrev bool
 		t := s.InitTrader()
-		for _, k := range klines {
-			if _, ok := k.Indicators[small_field]; !ok {
+		index_long := s.Main.Params[SMA_long]
+		for i := 0; i < len(klines[0].Array); i++ {
+			if i < s.Main.Params[SMA_long] {
 				continue
 			}
-			if _, ok := k.Indicators[long_field]; !ok {
-				continue
-			}
-
-			bigOverSmall := k.Indicators[small_field] < k.Indicators[long_field]
+			bigOverSmall := klines[0].Indicators[SMA_short][i] < klines[0].Indicators[SMA_long][i]
 			if !bigOverSmall && bigOverSmallPrev {
-				f_close, err := strconv.ParseFloat(k.Kline_binance.Close, 64)
+				f_close, err := strconv.ParseFloat(klines[0].Array[i-index_long].Close, 64)
 				if err != nil {
 					fmt.Println(err)
 				}
 				t.Buy_price = f_close
-				t.Buy_time = int64(k.Kline_binance.CloseTime)
+				t.Buy_time = int64(klines[0].Array[i-index_long].CloseTime)
 
 			}
 			if bigOverSmall && !bigOverSmallPrev && t.Buy_time != 0 {
-				f_close, err := strconv.ParseFloat(k.Kline_binance.Close, 64)
+				f_close, err := strconv.ParseFloat(klines[0].Array[i-index_long].Close, 64)
 				if err != nil {
 					fmt.Println(err)
 				}
 				t.Sell_price = f_close
-				t.Sell_time = int64(k.Kline_binance.CloseTime)
+				t.Sell_time = int64(klines[0].Array[i-index_long].CloseTime)
 				closedTrade = append(closedTrade, t)
 				t = Trader{}
 			}
-			bigOverSmallPrev = k.Indicators[small_field] < k.Indicators[long_field]
+			bigOverSmallPrev = bigOverSmall
 		}
 
 	}
@@ -180,7 +172,11 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 // systeme de mail
 
 func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
-
+	params := IndicatorsParams{
+		short_period_MA: s.Main.Params[SMA_short],
+		long_period_MA:  s.Main.Params[SMA_long],
+		RSI_coef:        s.Main.Params[RSI],
+	}
 	tradeOver := []Trader{}
 	result := StrategyResult{}
 	result.Ratio = 1
@@ -191,17 +187,12 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 		TradeInProgress: false,
 	}
 
-	short_field, long_field, err := s.GetMAFields()
-	if err != nil {
-		return err
-	}
-
 	for result.Ratio > 0.5 {
-
-		klineNative := GetKlines(client, s.Asset, s.Interval, 100) // limite must be > big period
-		kline := IndicatorstoKlines(klineNative, s.Main.Params["short"], s.Main.Params["long"], 14)
-		bearishPrev := kline[len(kline)-2].Indicators[short_field] < kline[len(kline)-2].Indicators[long_field]
-		bullish := kline[len(kline)-2].Indicators[short_field] >= kline[len(kline)-2].Indicators[long_field]
+		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
+		SMA_short := klines[0].Indicators[SMA_short]
+		SMA_long := klines[0].Indicators[SMA_long]
+		bearishPrev := SMA_short[len(SMA_short)-2] < SMA_long[len(SMA_long)-2]
+		bullish := SMA_short[len(SMA_short)-1] < SMA_long[len(SMA_long)-1]
 
 		if bearishPrev && bullish && t.Buy_time == 0 {
 			err := t.Buy(client)
