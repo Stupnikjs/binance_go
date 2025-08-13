@@ -33,15 +33,15 @@ func main() {
 	for i, _ := range long {
 
 		testStrategy := Strategy{
-			Asset:    "ETHUSDC",
-			Interval: "5m",
-			Filters:  []Filter{},
+			Asset:     "ETHUSDC",
+			Intervals: []Interval{m5, m15, m30, h1, h2, h4},
+			Filters:   []Filter{},
 			Main: Signal{
 				Name: "EMA",
 				Type: "Moving Average",
 				Params: map[Indicator]int{
-					sma:    short[i],
-					"long": long[i],
+					SMA_short: short[i],
+					SMA_long:  long[i],
 				},
 			},
 		}

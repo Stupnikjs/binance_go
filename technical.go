@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	RSI Indicator = "RSI"
-	VOL Indicator = "VOL"
+	RSI       Indicator = "RSI"
+	VOL       Indicator = "VOL"
 	SMA_short Indicator = "SMA_short"
 	EMA_short Indicator = "EMA_short"
-	SMA_long Indicator = "SMA_long"
-	EMA_long Indicator = "EMA_long"
+	SMA_long  Indicator = "SMA_long"
+	EMA_long  Indicator = "EMA_long"
 )
 
 type Interval string
@@ -30,30 +30,29 @@ const (
 	h4  Interval = "4h"
 )
 
- var Interv = []Interval{m1,m5, m15, m30, h1, h2, h4 }
-func findIntervalIndex(inter Interval) (int, ,error) {
+var Interv = []Interval{m1, m5, m15, m30, h1, h2, h4}
+
+func findIntervalIndex(inter Interval) (int, error) {
 	for i, in := range Interv {
 		if in == inter {
-			return i 
+			return i, nil
 		}
 	}
-	return fmt.Errorf("Error occurs in findIntervalIndex")
+	return 0, fmt.Errorf("Error occurs in findIntervalIndex")
 }
 
 type Indicators map[Indicator][]float64
 type Klines struct {
-	Interval Interval 
-	Array []*binance_connector.KlinesResponse
+	Interval   Interval
+	Array      []*binance_connector.KlinesResponse
 	Indicators Indicators
 }
 
 type IndicatorsParams struct {
-	short_period_MA int 
-	long_period_MA int
-	RSI_coef int 
-
+	short_period_MA int
+	long_period_MA  int
+	RSI_coef        int
 }
-
 
 // Kline get upper interval
 // query upper Intervals Coefs ex RSI_1h ..
@@ -72,8 +71,8 @@ func BuildKlinesArr(client *binance_connector.Client, pair string, Interval []In
 			fmt.Println(err)
 		}
 		kl := Klines{
-			Array: klines,
-			Interval: i,
+			Array:      klines,
+			Interval:   i,
 			Indicators: make(Indicators),
 		}
 		klinesArr = append(klinesArr, &kl)
@@ -102,17 +101,15 @@ func IndicatorstoKlines(client *binance_connector.Client, pair string, intervals
 	return klinesArr
 }
 
-
-
 func ProcessKlines(klines []*Klines, params IndicatorsParams) []*Klines {
-	for i, k := range klines {
-		// caclulate RSI EMA SMA 
+	for _, k := range klines {
+		// caclulate RSI EMA SMA
 		close := CloseFromKlines(k.Array)
 		RSI_arr := RSIcalc(close, params.RSI_coef)
 		SMA_short_arr := SMAcalc(close, params.short_period_MA)
 		SMA_long_arr := SMAcalc(close, params.long_period_MA)
 		EMA_short_arr := EMAcalc(close, params.short_period_MA)
-		EMA_long_arr:= EMAcalc(close, params.long_period_MA)
+		EMA_long_arr := EMAcalc(close, params.long_period_MA)
 		k.Indicators[RSI] = RSI_arr
 		k.Indicators[SMA_short] = SMA_short_arr
 		k.Indicators[SMA_long] = SMA_long_arr
@@ -121,8 +118,6 @@ func ProcessKlines(klines []*Klines, params IndicatorsParams) []*Klines {
 	}
 	return klines
 }
-
-
 
 func SMAcalc(closingPrices []float64, period int) []float64 {
 	var SMA []float64

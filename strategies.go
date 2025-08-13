@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
@@ -54,18 +53,6 @@ func (s *Strategy) InitResult(klines []*binance_connector.KlinesResponse) Strate
 	result.StartStamp = int(klines[0].CloseTime)
 	result.EndStamp = int(klines[len(klines)-1].CloseTime)
 	return result
-}
-
-func (s *Strategy) GetMAFields() (string, string, error) {
-
-	short_field := fmt.Sprintf("%s_%d", strings.ToLower(s.Main.Name), s.Main.Params["short"])
-	long_field := fmt.Sprintf("%s_%d", strings.ToLower(s.Main.Name), s.Main.Params["long"])
-	var err error
-	if short_field == "" || long_field == "" {
-		err = fmt.Errorf("Error parsing MA field")
-	}
-
-	return short_field, long_field, err
 }
 
 type StrategyResult struct {
