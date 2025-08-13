@@ -13,17 +13,17 @@ import (
 
 type Indicator string
 type Strategy struct {
-	Asset    string
-	Amount   float64
-	Interval string
-	Filters  []Filter
-	Main     Signal
+	Asset     string
+	Amount    float64
+	Intervals []Interval // first interval is the main interval where we want to trade market
+	Filters   []Filter
+	Main      Signal
 }
 
 type Signal struct {
 	Name   string
 	Type   string
-	Params map[string]int
+	Params map[Indicator]int
 }
 
 type Filter struct {
@@ -99,15 +99,22 @@ type Fill struct {
 }
 
 func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResult {
-	klinesClean := GetKlines(client, s.Asset, s.Interval, 1000)
-	result := s.InitResult(klinesClean)
+	params := IndicatorsParams{
+		short_period_MA: s.Main.Params[SMA_short],
+		long_period_MA:  s.Main.Params[SMA_long],
+		RSI_coef:        s.Main.Params[RSI],
+	}
+	klines := IndicatorstoKlines(
+		client,
+		s.Asset,
+		s.Intervals,
+		params)
+
+	result := s.InitResult(klines[0].Array)
 	closedTrade := []Trader{}
 
 	if s.Main.Type == "Moving Average" {
-		klines := IndicatorstoKlines(
-			klinesClean,
-			s.Main.Params["short"], s.Main.Params["long"],
-			14)
+
 		if s.Main.Name != "SMA" && s.Main.Name != "EMA" {
 			log.Fatal("wrong strat name ")
 		}
