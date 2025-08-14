@@ -15,7 +15,6 @@ type Strategy struct {
 	Asset     string
 	Amount    float64
 	Intervals []Interval // first interval is the main interval where we want to trade market
-	Filters   []Filter
 	Main      Signal
 }
 
@@ -25,12 +24,6 @@ type Signal struct {
 	Params map[Indicator]int
 }
 
-type Filter struct {
-	BuyFilter bool
-	Indicator
-	Value    float64
-	Interval string
-}
 type Trader struct {
 	Asset           string
 	Amount          float64
@@ -108,27 +101,25 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 		var bigOverSmallPrev bool
 		t := s.InitTrader()
 		index_long := s.Main.Params[SMA_long]
-		for i := 0; i < len(klines[0].Array); i++ {
-			if i < s.Main.Params[SMA_long] {
-				continue
-			}
+		for i := 1; i < len(klines[0].Indicators[SMA_long]); i++ {
+
 			bigOverSmall := klines[0].Indicators[SMA_short][i] < klines[0].Indicators[SMA_long][i]
 			if !bigOverSmall && bigOverSmallPrev {
-				f_close, err := strconv.ParseFloat(klines[0].Array[i-index_long].Close, 64)
+				f_close, err := strconv.ParseFloat(klines[0].Array[i+index_long-1].Close, 64)
 				if err != nil {
 					fmt.Println(err)
 				}
 				t.Buy_price = f_close
-				t.Buy_time = int64(klines[0].Array[i-index_long].CloseTime)
+				t.Buy_time = int64(klines[0].Array[i+index_long-1].CloseTime)
 
 			}
 			if bigOverSmall && !bigOverSmallPrev && t.Buy_time != 0 {
-				f_close, err := strconv.ParseFloat(klines[0].Array[i-index_long].Close, 64)
+				f_close, err := strconv.ParseFloat(klines[0].Array[i+index_long-1].Close, 64)
 				if err != nil {
 					fmt.Println(err)
 				}
 				t.Sell_price = f_close
-				t.Sell_time = int64(klines[0].Array[i-index_long].CloseTime)
+				t.Sell_time = int64(klines[0].Array[i+index_long-1].CloseTime)
 				closedTrade = append(closedTrade, t)
 				t = Trader{}
 			}
@@ -173,14 +164,23 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 		Amount:          s.Amount,
 		TradeInProgress: false,
 	}
-
-	for result.Ratio > 0.5 {
+	var prevRatio = 1.0
+	for result.Ratio > 0.5 || result.Ratio < 1.05 {
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
-		SMA_short := klines[0].Indicators[SMA_short]
-		SMA_long := klines[0].Indicators[SMA_long]
-		bearishPrev := SMA_short[len(SMA_short)-2] < SMA_long[len(SMA_long)-2]
-		bullish := SMA_short[len(SMA_short)-1] < SMA_long[len(SMA_long)-1]
-
+		var MA_short, MA_long []float64
+		var bullish, bearishPrev bool
+		if s.Main.Name == "SMA" {
+			MA_short = klines[0].Indicators[SMA_short]
+			MA_long = klines[0].Indicators[SMA_long]
+			bearishPrev = MA_short[len(MA_short)-2] < MA_long[len(MA_long)-2]
+			bullish = MA_short[len(MA_short)-1] < MA_long[len(MA_long)-1]
+		}
+		if s.Main.Name == "EMA" {
+			MA_short = klines[0].Indicators[EMA_short]
+			MA_long = klines[0].Indicators[EMA_long]
+			bearishPrev = MA_short[len(MA_short)-2] < MA_long[len(MA_long)-2]
+			bullish = MA_short[len(MA_short)-1] < MA_long[len(MA_long)-1]
+		}
 		if bearishPrev && bullish && t.Buy_time == 0 {
 			err := t.Buy(client)
 			if err != nil {
@@ -194,10 +194,14 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 				return err
 			}
 			tradeOver = append(tradeOver, t)
+			ratio := (t.Sell_price - t.Buy_price) / prevRatio
+			result.Ratio = ratio
+			prevRatio = ratio
 			t = Trader{}
 		}
 
 	}
+	SaveAsJson(tradeOver)
 	return nil
 }
 
@@ -261,7 +265,9 @@ func (t *Trader) Sell(client *binance_connector.Client) error {
 			Type("MARKET").
 			Quantity(t.Amount).
 			Do(context.Background())
-
+		if err != nil {
+			return err
+		}
 		// extract response to a struct
 		var orderResponse CreateOrderResponse
 		jsonBytes, err := json.Marshal(response)
@@ -290,17 +296,6 @@ func (t *Trader) Sell(client *binance_connector.Client) error {
 	return nil
 }
 
-func (t *Trader) GetGain(client *binance_connector.Client) (float64, error) {
-	if t.Buy_price == 0 || t.Sell_price == 0 {
-		return 0, fmt.Errorf("Trade not closed")
-	}
-	gain := t.Sell_price*t.Amount - t.Buy_price*t.Amount
-
-	return gain, nil
-}
-
-func StrategyLab() {}
-
 func GetAssetBalance(client *binance_connector.Client, asset string) (float64, error) {
 
 	account, err := client.NewGetAccountService().Do(context.Background())
@@ -311,4 +306,17 @@ func GetAssetBalance(client *binance_connector.Client, asset string) (float64, e
 		}
 	}
 	return 0, err
+}
+
+func getTrades(client *binance_connector.Client, pair string) {
+	trades, err := client.NewAggTradesListService().
+		Symbol(pair).
+		Do(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Pretty print the response for readability
+	fmt.Println(binance_connector.PrettyPrint(trades))
 }

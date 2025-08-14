@@ -45,6 +45,14 @@ func (r *StrategyResult) AppendToHistory() error {
 	return nil
 }
 
-func DataFromReport() {
-	// trouver les meilleurs coefs par interval
+func SaveAsJson(inter any) {
+	finalBytes, err := json.Marshal(inter)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = os.WriteFile("report.json", finalBytes, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 }

@@ -113,8 +113,8 @@ func ProcessKlines(klines []*Klines, params IndicatorsParams) []*Klines {
 		k.Indicators[RSI] = RSI_arr
 		k.Indicators[SMA_short] = SMA_short_arr
 		k.Indicators[SMA_long] = SMA_long_arr
-		k.Indicators[EMA_long] = EMA_short_arr
-		k.Indicators[EMA_short] = EMA_long_arr
+		k.Indicators[EMA_short] = EMA_short_arr
+		k.Indicators[EMA_long] = EMA_long_arr
 	}
 	return klines
 }
