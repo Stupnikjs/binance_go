@@ -207,6 +207,10 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 				return err
 			}
 			newBalance, err := GetAssetBalance(client, "USDC")
+			if err != nil {
+
+				return err
+			}
 			t.Gain = newBalance - prevBalance
 			prevBalance = newBalance
 			tradeOver = append(tradeOver, t)
