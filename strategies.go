@@ -251,7 +251,7 @@ func (t *Trader) Buy(client *binance_connector.Client) error {
 		t.Buy_price = float_price
 		t.Buy_time = orderResponse.TransactTime
 		t.TradeInProgress = true
-
+		fmt.Printf("trade opened %v", t)
 		return err
 
 	}

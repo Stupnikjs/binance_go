@@ -10,7 +10,7 @@ import (
 
 var testStrategy = Strategy{
 	Amount:    0.01,
-	Asset:     "LINKUSDC",
+	Asset:     "ETHUSDC",
 	Intervals: []Interval{m5, m15, m30, h1, h2, h4},
 	Main: Signal{
 		Name: "EMA",
@@ -36,7 +36,15 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
 	// Get API credentials from environment variables
-	result := testStrategy.StrategyTester(client)
-	result.AppendToHistory()
+
+	/*
+		res := testStrategy.StrategyTester(client)
+		if err != nil {
+			log.Fatal(err)
+		}
+		res.AppendToHistory()
+	*/
+	FindBestMAParams(client, "XRPUSDC", []Interval{m5, m15, m30, h1, h2, h4})
+	// AnalyseReport("XRPUSDC")
 
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func (r *StrategyResult) AppendToHistory() error {
@@ -35,9 +36,11 @@ func (r *StrategyResult) AppendToHistory() error {
 		return fmt.Errorf("error marshaling JSON: %w", err)
 	}
 
+	filename := fmt.Sprintf("%s_report.json", strings.ToLower(r.Strategy.Asset))
+
 	// Overwrite the file with the new JSON data.
 	// os.WriteFile handles opening, truncating, writing, and closing.
-	err = os.WriteFile("report.json", finalBytes, 0644)
+	err = os.WriteFile(filename, finalBytes, 0644)
 	if err != nil {
 		return fmt.Errorf("error writing to file: %w", err)
 	}
