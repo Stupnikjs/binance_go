@@ -27,6 +27,7 @@ type Signal struct {
 type Trader struct {
 	Asset           string
 	Amount          float64
+	Gain            float64
 	TradeInProgress bool
 	Buy_price       float64
 	Buy_time        int64
@@ -162,10 +163,16 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 	t := Trader{
 		Asset:           s.Asset,
 		Amount:          s.Amount,
+		Gain:            0,
 		TradeInProgress: false,
 	}
 	var prevRatio = 1.0
+	prevBalance, err := GetAssetBalance(client, "USDC")
+	if err != nil {
+		return err
+	}
 	for result.Ratio > 0.5 || result.Ratio < 1.05 {
+		fmt.Printf("loop iteration %v \n", result.Ratio)
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
 		var MA_short, MA_long []float64
 		var bullish, bearishPrev bool
@@ -182,7 +189,12 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 			bullish = MA_short[len(MA_short)-1] < MA_long[len(MA_long)-1]
 		}
 		if bearishPrev && bullish && t.Buy_time == 0 {
-			err := t.Buy(client)
+			prevBalance, err = GetAssetBalance(client, "USDC")
+			if err != nil {
+				return err
+			}
+			err = t.Buy(client)
+			fmt.Printf("Buying at %v %v \n", t.Buy_time, t.Buy_price)
 			if err != nil {
 
 				return err
@@ -190,9 +202,13 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 		}
 		if !bearishPrev && !bullish && t.Buy_time != 0 {
 			err := t.Sell(client)
+			fmt.Printf("Selling at %v %v \n", t.Sell_time, t.Sell_price)
 			if err != nil {
 				return err
 			}
+			newBalance, err := GetAssetBalance(client, "USDC")
+			t.Gain = newBalance - prevBalance
+			prevBalance = newBalance
 			tradeOver = append(tradeOver, t)
 			ratio := (t.Sell_price - t.Buy_price) / prevRatio
 			result.Ratio = ratio
@@ -201,7 +217,8 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 		}
 
 	}
-	SaveAsJson(tradeOver)
+	filename := fmt.Sprintf("%s_trade_report.json", s.Asset)
+	SaveJsonTrader(filename, tradeOver)
 	return nil
 }
 
@@ -306,17 +323,4 @@ func GetAssetBalance(client *binance_connector.Client, asset string) (float64, e
 		}
 	}
 	return 0, err
-}
-
-func getTrades(client *binance_connector.Client, pair string) {
-	trades, err := client.NewAggTradesListService().
-		Symbol(pair).
-		Do(context.Background())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Pretty print the response for readability
-	fmt.Println(binance_connector.PrettyPrint(trades))
 }

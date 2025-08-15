@@ -17,7 +17,7 @@ var testStrategy = Strategy{
 		Type: "Moving Average",
 		Params: map[Indicator]int{
 			SMA_short: 9,
-			SMA_long:  25,
+			SMA_long:  20,
 		},
 	},
 }
@@ -44,7 +44,14 @@ func main() {
 		}
 		res.AppendToHistory()
 	*/
-	FindBestMAParams(client, "XRPUSDC", []Interval{m5, m15, m30, h1, h2, h4})
-	// AnalyseReport("XRPUSDC")
+	ParralelFindBestMAParams(client, "LINKUSDC", []Interval{m5, m15, m30, h1, h2, h4})
+	//AnalyseReport("BTCUSDC")
+
+	/*
+		err = testStrategy.StrategyApply(client)
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
 
 }

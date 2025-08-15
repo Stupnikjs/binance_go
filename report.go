@@ -48,12 +48,23 @@ func (r *StrategyResult) AppendToHistory() error {
 	return nil
 }
 
-func SaveAsJson(inter any) {
-	finalBytes, err := json.Marshal(inter)
+func SaveJsonResult(filename string, results []StrategyResult) {
+	finalBytes, err := json.Marshal(results)
 	if err != nil {
 		fmt.Println(err)
 	}
-	err = os.WriteFile("report.json", finalBytes, 0644)
+	err = os.WriteFile(filename, finalBytes, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
+func SaveJsonTrader(filename string, Traders []Trader) {
+	finalBytes, err := json.Marshal(Traders)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = os.WriteFile(filename, finalBytes, 0644)
 	if err != nil {
 		fmt.Println(err)
 	}
