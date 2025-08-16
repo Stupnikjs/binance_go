@@ -10,8 +10,14 @@ import (
 )
 
 const (
-	RSI       Indicator = "RSI"
-	VOL       Indicator = "VOL"
+	RSI     Indicator = "RSI"
+	VOL     Indicator = "VOL"
+	RSI_15m Indicator = "RSI_15m"
+	RSI_30m Indicator = "RSI_30m"
+	RSI_1h  Indicator = "RSI_1h"
+	RSI_2h  Indicator = "RSI_2h"
+	RSI_4h  Indicator = "RSI_4h"
+
 	SMA_short Indicator = "SMA_short"
 	EMA_short Indicator = "EMA_short"
 	SMA_long  Indicator = "SMA_long"

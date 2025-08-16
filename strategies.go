@@ -105,6 +105,7 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 		for i := 1; i < len(klines[0].Indicators[SMA_long]); i++ {
 			// check crossOver or Under
 			// implement checking or RSI in the timeframe in klines[1] or klines[2]
+			err = MeltRSIKline(klines[0], klines[2])
 			bigOverSmallPrev = t.CrossMA(klines[0], i, index_long, &bigOverSmallPrev, &closedTrade)
 		}
 
@@ -129,6 +130,32 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 
 // systeme de mail
 
+func MeltRSIKline(receiver *Klines, origin *Klines) error {
+	RSI_origin := origin.Indicators[RSI]
+	var targetIndicator Indicator
+	// switch on Intervals
+	switch origin.Interval {
+	case m15:
+		targetIndicator = RSI_15m
+	case m30:
+		targetIndicator = RSI_30m
+	case h1:
+		targetIndicator = RSI_1h
+	case h2:
+		targetIndicator = RSI_2h
+	case h4:
+		targetIndicator = RSI_4h
+	}
+	n := 0
+	for i := range origin.Array {
+		curr := origin.Array[n]
+		if receiver.Array[i].CloseTime < curr.CloseTime {
+			receiver.Indicators[targetIndicator][i] = origin.Indicators[RSI][i]
+		}
+
+	}
+	return nil
+}
 func (t *Trader) CrossMA(klines *Klines, i int, index_long int, bigOverSmallPrev *bool, closed *[]Trader) bool {
 
 	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
