@@ -216,7 +216,7 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 			}
 			fmt.Printf("balance USDC: %v \n", newBalance-oldBalance)
 			tradeOver = append(tradeOver, t)
-			ratio := (t.Sell_price - t.Buy_price) / prevRatio
+			ratio := (t.Sell_price - t.Buy_price) * prevRatio
 			result.Ratio = ratio
 			fmt.Printf("Ratio : %v \n", ratio)
 			prevRatio = ratio
