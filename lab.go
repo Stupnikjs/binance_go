@@ -129,6 +129,8 @@ func ParralelFindBestMAParams(client *binance_connector.Client, pair string, int
 	filename := fmt.Sprintf("%s_report.json", strings.ToLower(pair))
 	SaveJsonResult(filename, allResult)
 	AnalyseReport(pair)
+	pairs, _ := OpenReports()
+	fmt.Println(pairs)
 }
 
 // find average ratio
@@ -166,3 +168,24 @@ func AnalyseReport(pairname string) {
 	}
 
 }
+
+func OpenReports() ([]string, error) {
+	pairs := []string{}
+	entries, err := os.ReadDir("reports")
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		pair := strings.Split(e.Name(), "_")
+
+		if len(pair) > 1 {
+			pairs = append(pairs, strings.ToUpper(pair[0]))
+		} else {
+			return nil, fmt.Errorf("report name doesnt matchs expetation")
+		}
+
+	}
+	return pairs, nil
+}
+
+// for pairs

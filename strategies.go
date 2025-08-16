@@ -27,7 +27,7 @@ type Signal struct {
 type Trader struct {
 	Asset           string
 	Amount          float64
-	Gain            float64
+	IndicatorMap    map[Indicator]float64
 	TradeInProgress bool
 	Buy_price       float64
 	Buy_time        int64
@@ -105,7 +105,10 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 		for i := 1; i < len(klines[0].Indicators[SMA_long]); i++ {
 			// check crossOver or Under
 			// implement checking or RSI in the timeframe in klines[1] or klines[2]
-			err = MeltRSIKline(klines[0], klines[2])
+			err := MeltRSIKline(klines[0], klines[2])
+			if err != nil {
+				fmt.Println(err)
+			}
 			bigOverSmallPrev = t.CrossMA(klines[0], i, index_long, &bigOverSmallPrev, &closedTrade)
 		}
 
@@ -145,12 +148,14 @@ func MeltRSIKline(receiver *Klines, origin *Klines) error {
 		targetIndicator = RSI_2h
 	case h4:
 		targetIndicator = RSI_4h
+	default:
+		return fmt.Errorf("no indicator valid found")
 	}
 	n := 0
 	for i := range origin.Array {
 		curr := origin.Array[n]
 		if receiver.Array[i].CloseTime < curr.CloseTime {
-			receiver.Indicators[targetIndicator][i] = origin.Indicators[RSI][i]
+			receiver.Indicators[targetIndicator][i] = RSI_origin[i]
 		}
 
 	}
@@ -196,7 +201,7 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 	t := Trader{
 		Asset:           s.Asset,
 		Amount:          s.Amount,
-		Gain:            0,
+		IndicatorMap:    map[Indicator]float64{},
 		TradeInProgress: false,
 	}
 	var prevRatio = 1.0
@@ -205,7 +210,12 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 		return err
 	}
 	for result.Ratio > 0.5 || result.Ratio < 1.10 {
+
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
+		err := MeltRSIKline(klines[0], klines[3])
+		if err != nil {
+			return err
+		}
 		var MA_short, MA_long []float64
 		var bullish, bearishPrev bool
 		if s.Main.Name == "SMA" {
@@ -221,13 +231,10 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 			bullish = MA_short[len(MA_short)-1] < MA_long[len(MA_long)-1]
 		}
 		if bearishPrev && bullish && t.Buy_time == 0 {
-			if err != nil {
-				return err
-			}
+
 			err = t.Buy(client)
 			fmt.Printf("Buying at %v %v \n", t.Buy_time, t.Buy_price)
 			if err != nil {
-
 				return err
 			}
 		}
@@ -243,11 +250,15 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 			}
 			fmt.Printf("balance USDC: %v \n", newBalance-oldBalance)
 			tradeOver = append(tradeOver, t)
-			ratio := (t.Sell_price - t.Buy_price) / prevRatio
+			ratio := (t.Sell_price - t.Buy_price) * prevRatio
 			result.Ratio = ratio
 			fmt.Printf("Ratio : %v \n", ratio)
 			prevRatio = ratio
-			t = Trader{}
+			t = Trader{
+				Asset:        s.Asset,
+				Amount:       s.Amount,
+				IndicatorMap: map[Indicator]float64{},
+			}
 		}
 
 	}

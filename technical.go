@@ -38,15 +38,6 @@ const (
 
 var Interv = []Interval{m1, m5, m15, m30, h1, h2, h4}
 
-func findIntervalIndex(inter Interval) (int, error) {
-	for i, in := range Interv {
-		if in == inter {
-			return i, nil
-		}
-	}
-	return 0, fmt.Errorf("Error occurs in findIntervalIndex")
-}
-
 type Indicators map[Indicator][]float64
 type Klines struct {
 	Interval   Interval
