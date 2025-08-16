@@ -103,34 +103,13 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 		t := s.InitTrader()
 		index_long := s.Main.Params[SMA_long]
 		for i := 1; i < len(klines[0].Indicators[SMA_long]); i++ {
-
-			bigOverSmall := klines[0].Indicators[SMA_short][i] < klines[0].Indicators[SMA_long][i]
-			if !bigOverSmall && bigOverSmallPrev {
-				f_close, err := strconv.ParseFloat(klines[0].Array[i+index_long-1].Close, 64)
-				if err != nil {
-					fmt.Println(err)
-				}
-				t.Buy_price = f_close
-				t.Buy_time = int64(klines[0].Array[i+index_long-1].CloseTime)
-
-			}
-			if bigOverSmall && !bigOverSmallPrev && t.Buy_time != 0 {
-				f_close, err := strconv.ParseFloat(klines[0].Array[i+index_long-1].Close, 64)
-				if err != nil {
-					fmt.Println(err)
-				}
-				t.Sell_price = f_close
-				t.Sell_time = int64(klines[0].Array[i+index_long-1].CloseTime)
-				closedTrade = append(closedTrade, t)
-				t = Trader{}
-			}
-			bigOverSmallPrev = bigOverSmall
+			// check crossOver or Under
+			// implement checking or RSI in the timeframe in klines[1] or klines[2]
+			bigOverSmallPrev = t.CrossMA(klines[0], i, index_long, &bigOverSmallPrev, &closedTrade)
 		}
 
 	}
-
 	// modify to pass.Indicators
-
 	// type == "Mooving Average"
 
 	prev_ratio := 1.0
@@ -150,6 +129,33 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 
 // systeme de mail
 
+func (t *Trader) CrossMA(klines *Klines, i int, index_long int, bigOverSmallPrev *bool, closed *[]Trader) bool {
+
+	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
+
+	if !bigOverSmall && *bigOverSmallPrev {
+		f_close, err := strconv.ParseFloat(klines.Array[i+index_long-1].Close, 64)
+		if err != nil {
+			fmt.Println(err)
+		}
+		t.Buy_price = f_close
+		t.Buy_time = int64(klines.Array[i+index_long-1].CloseTime)
+
+	}
+	if bigOverSmall && !*bigOverSmallPrev && t.Buy_time != 0 {
+		f_close, err := strconv.ParseFloat(klines.Array[i+index_long-1].Close, 64)
+		if err != nil {
+			fmt.Println(err)
+		}
+		t.Sell_price = f_close
+		t.Sell_time = int64(klines.Array[i+index_long-1].CloseTime)
+		*closed = append(*closed, *t)
+		t = &Trader{}
+	}
+	return bigOverSmall
+
+}
+
 func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 	params := IndicatorsParams{
 		short_period_MA: s.Main.Params[SMA_short],
@@ -167,12 +173,11 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 		TradeInProgress: false,
 	}
 	var prevRatio = 1.0
-	prevBalance, err := GetAssetBalance(client, "USDC")
+	oldBalance, err := GetAssetBalance(client, "USDC")
 	if err != nil {
 		return err
 	}
-	for result.Ratio > 0.5 || result.Ratio < 1.05 {
-		fmt.Printf("loop iteration %v \n", result.Ratio)
+	for result.Ratio > 0.5 || result.Ratio < 1.10 {
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
 		var MA_short, MA_long []float64
 		var bullish, bearishPrev bool
@@ -189,7 +194,6 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 			bullish = MA_short[len(MA_short)-1] < MA_long[len(MA_long)-1]
 		}
 		if bearishPrev && bullish && t.Buy_time == 0 {
-			prevBalance, err = GetAssetBalance(client, "USDC")
 			if err != nil {
 				return err
 			}
@@ -208,14 +212,13 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 			}
 			newBalance, err := GetAssetBalance(client, "USDC")
 			if err != nil {
-
 				return err
 			}
-			t.Gain = newBalance - prevBalance
-			prevBalance = newBalance
+			fmt.Printf("balance USDC: %v \n", newBalance-oldBalance)
 			tradeOver = append(tradeOver, t)
 			ratio := (t.Sell_price - t.Buy_price) / prevRatio
 			result.Ratio = ratio
+			fmt.Printf("Ratio : %v \n", ratio)
 			prevRatio = ratio
 			t = Trader{}
 		}

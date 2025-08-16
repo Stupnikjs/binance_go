@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -24,6 +25,7 @@ var testStrategy = Strategy{
 
 func main() {
 	// Load .env file
+	args := os.Args
 
 	err := godotenv.Load()
 	if err != nil {
@@ -37,21 +39,17 @@ func main() {
 	_ = client
 	// Get API credentials from environment variables
 
-	/*
-		res := testStrategy.StrategyTester(client)
-		if err != nil {
-			log.Fatal(err)
-		}
-		res.AppendToHistory()
-	*/
-	ParralelFindBestMAParams(client, "LINKUSDC", []Interval{m5, m15, m30, h1, h2, h4})
-	//AnalyseReport("BTCUSDC")
+	if len(args) > 2 && args[1] == "backtest" {
+		fmt.Println("backtesting .. ")
+		ParralelFindBestMAParams(client, args[2], []Interval{m5, m15, m30, h1, h2, h4})
+	} else {
 
-	/*
 		err = testStrategy.StrategyApply(client)
 		if err != nil {
 			log.Fatal(err)
 		}
-	*/
+	}
 
 }
+
+// creer des commandes pour backtester
