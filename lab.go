@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -57,7 +54,7 @@ func FindBestMAParams(client *binance_connector.Client, pair string, interval []
 	SaveJsonResult(filename, allResult)
 }
 
-func ParralelFindBestMAParams(client *binance_connector.Client, pair string, interval []Interval) {
+func ParralelFindBestMAParams(client *binance_connector.Client, pair string, interval []Interval) []StrategyResult {
 	var allResult []StrategyResult
 	var wg sync.WaitGroup
 	resultsChan := make(chan StrategyResult, 32*16) // Buffered channel
@@ -126,66 +123,64 @@ func ParralelFindBestMAParams(client *binance_connector.Client, pair string, int
 		allResult = append(allResult, result)
 	}
 
-	filename := fmt.Sprintf("%s_report.json", strings.ToLower(pair))
-	SaveJsonResult(filename, allResult)
-	AnalyseReport(pair)
-	pairs, _ := OpenReports()
-	fmt.Println(pairs)
+	return allResult
+
 }
 
 // find average ratio
-func AnalyseReport(pairname string) {
 
-	fileName := fmt.Sprintf("%s_report.json", strings.ToLower(pairname))
-	file, err := os.Open(fileName)
+func FetchReports(client *binance_connector.Client) error {
+	reports, err := OpenReports()
 	if err != nil {
-		fmt.Println(err)
-
+		return err
 	}
-	bytes, err := io.ReadAll(file)
-	if err != nil {
-		fmt.Println(err)
 
-	}
-	var results []StrategyResult
-	err = json.Unmarshal(bytes, &results)
-	if err != nil {
-		fmt.Println(bytes)
-
-	}
-	slices.SortFunc(results, func(a, b StrategyResult) int {
-		if a.Ratio > b.Ratio {
-			return -1
+	for _, r := range reports {
+		result := ParralelFindBestMAParams(client, r, []Interval{m5, m15, m30, h1})
+		err = AppendToReport(r, result)
+		if err != nil {
+			return err
 		}
-		if a.Ratio < b.Ratio {
+		time.Sleep(3 * time.Minute)
+	}
+	return nil
+}
+
+func FindAvgRatioPerParams() error {
+	allReports, err := GetAllReports()
+	if err != nil {
+		return err
+	}
+	sumMap := make(map[string]float64)
+	countMap := make(map[string]float64)
+	avgMap := make(map[string]float64)
+	for _, r := range allReports {
+		str_param := fmt.Sprintf("%v_%v", r.Strategy.Main.Params[SMA_short], r.Strategy.Main.Params[SMA_long])
+		countMap[str_param] += 1
+		sumMap[str_param] += r.Ratio
+
+	}
+	for k, v := range sumMap {
+		avgMap[k] = v / countMap[k]
+	}
+	type average struct {
+		params string
+		avg    float64
+	}
+	var avg []average
+	for k, v := range avgMap {
+		avg = append(avg, average{params: k, avg: v})
+	}
+
+	slices.SortFunc(avg, func(a, b average) int {
+		if a.avg > b.avg {
 			return 1
+		}
+		if b.avg > a.avg {
+			return -1
 		}
 		return 0
 	})
-
-	for _, r := range results[:20] {
-		fmt.Println(r.Ratio, r.Strategy.Main)
-	}
-
+	fmt.Println(avg)
+	return nil
 }
-
-func OpenReports() ([]string, error) {
-	pairs := []string{}
-	entries, err := os.ReadDir("reports")
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range entries {
-		pair := strings.Split(e.Name(), "_")
-
-		if len(pair) > 1 {
-			pairs = append(pairs, strings.ToUpper(pair[0]))
-		} else {
-			return nil, fmt.Errorf("report name doesnt matchs expetation")
-		}
-
-	}
-	return pairs, nil
-}
-
-// for pairs

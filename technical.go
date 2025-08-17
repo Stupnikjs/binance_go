@@ -9,6 +9,8 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
+type Indicator string
+
 const (
 	RSI     Indicator = "RSI"
 	VOL     Indicator = "VOL"

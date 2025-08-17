@@ -3,7 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path"
+	"slices"
 	"strings"
 )
 
@@ -69,4 +72,111 @@ func SaveJsonTrader(filename string, Traders []Trader) {
 		fmt.Println(err)
 	}
 
+}
+
+func AppendToReport(pair string, results []StrategyResult) error {
+	fmt.Printf("appening %s to report .. \n", pair)
+	filename := fmt.Sprintf("%s_report.json", strings.ToLower(pair))
+	path := path.Join("reports_5m", filename)
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return err
+	}
+	var oldResult []StrategyResult
+	err = json.Unmarshal(bytes, &oldResult)
+	if err != nil {
+		return err
+	}
+	oldResult = append(oldResult, results...)
+	file.Close()
+	bytes, err = json.Marshal(oldResult)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path, bytes, 0644)
+	return err
+
+}
+
+func PrintTop5report(pairname string) error {
+	results, err := ReadReport(pairname)
+	if err != nil {
+		return err
+
+	}
+	slices.SortFunc(results, func(a, b StrategyResult) int {
+		if a.Ratio > b.Ratio {
+			return -1
+		}
+		if a.Ratio < b.Ratio {
+			return 1
+		}
+		return 0
+	})
+
+	for _, r := range results[:5] {
+		fmt.Printf("Top 5 %s with ratio:%v params %v", pairname, r.Ratio, r.Strategy.Main)
+	}
+	return nil
+}
+
+func GetAllReports() ([]StrategyResult, error) {
+	names, err := OpenReports()
+	allResult := []StrategyResult{}
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range names {
+		result, err := ReadReport(n)
+		if err != nil {
+			return nil, err
+		}
+		allResult = append(allResult, result...)
+	}
+	return allResult, nil
+}
+
+func OpenReports() ([]string, error) {
+	pairs := []string{}
+	entries, err := os.ReadDir("reports_5m")
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		pair := strings.Split(e.Name(), "_")
+
+		if len(pair) > 1 {
+			pairs = append(pairs, strings.ToUpper(pair[0]))
+		} else {
+			return nil, fmt.Errorf("report name doesnt matchs expetation")
+		}
+
+	}
+	return pairs, nil
+}
+
+func ReadReport(pairname string) ([]StrategyResult, error) {
+	fileName := fmt.Sprintf("%s_report.json", strings.ToLower(pairname))
+	path := path.Join("reports_5m", fileName)
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+
+	}
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	var results []StrategyResult
+	err = json.Unmarshal(bytes, &results)
+	if err != nil {
+		return nil, err
+
+	}
+	return results, nil
 }

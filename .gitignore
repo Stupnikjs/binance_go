@@ -1,4 +1,4 @@
 .env
 go.sum
 *.json
-reports
+reports_5m

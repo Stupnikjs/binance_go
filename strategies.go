@@ -10,7 +10,6 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-type Indicator string
 type Strategy struct {
 	Asset     string
 	Amount    float64
@@ -35,11 +34,12 @@ type Trader struct {
 	Sell_time       int64
 }
 
-func (s *Strategy) InitTrader() Trader {
+func InitTrader(pair string, amount float64) Trader {
 	return Trader{
-		Asset:           s.Asset,
-		Amount:          s.Amount,
+		Asset:           pair,
+		Amount:          amount,
 		TradeInProgress: false,
+		IndicatorMap:    make(map[Indicator]float64),
 	}
 }
 func (s *Strategy) InitResult(klines []*binance_connector.KlinesResponse) StrategyResult {
@@ -100,7 +100,7 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 		}
 
 		var bigOverSmallPrev bool
-		t := s.InitTrader()
+		t := InitTrader(s.Asset, s.Amount)
 		index_long := s.Main.Params[SMA_long]
 		for i := 1; i < len(klines[0].Indicators[SMA_long]); i++ {
 			// check crossOver or Under
@@ -182,7 +182,7 @@ func (t *Trader) CrossMA(klines *Klines, i int, index_long int, bigOverSmallPrev
 		t.Sell_price = f_close
 		t.Sell_time = int64(klines.Array[i+index_long-1].CloseTime)
 		*closed = append(*closed, *t)
-		t = &Trader{}
+		*t = InitTrader(t.Asset, t.Amount)
 	}
 	return bigOverSmall
 
@@ -209,7 +209,7 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 	if err != nil {
 		return err
 	}
-	for result.Ratio > 0.5 || result.Ratio < 1.10 {
+	for result.Ratio > 0.8 && result.Ratio < 1.20 {
 
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
 		err := MeltRSIKline(klines[0], klines[3])
