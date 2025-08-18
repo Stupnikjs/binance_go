@@ -34,6 +34,13 @@ type Trader struct {
 	Sell_time       int64
 }
 
+type StrategyResult struct {
+	StartStamp int // BORDERS OF THE SAMPLE TESTED
+	EndStamp   int
+	Ratio      float64
+	Strategy   *Strategy
+}
+
 func InitTrader(pair string, amount float64) Trader {
 	return Trader{
 		Asset:           pair,
@@ -47,13 +54,6 @@ func (s *Strategy) InitResult(klines []*binance_connector.KlinesResponse) Strate
 	result.StartStamp = int(klines[0].CloseTime)
 	result.EndStamp = int(klines[len(klines)-1].CloseTime)
 	return result
-}
-
-type StrategyResult struct {
-	StartStamp int // BORDERS OF THE SAMPLE TESTED
-	EndStamp   int
-	Ratio      float64
-	Strategy   *Strategy
 }
 
 type CreateOrderResponse struct {
@@ -83,6 +83,7 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 	params := IndicatorsParams{
 		short_period_MA: s.Main.Params[SMA_short],
 		long_period_MA:  s.Main.Params[SMA_long],
+		super_long_MA:   s.Main.Params[SMA_super_long],
 		RSI_coef:        s.Main.Params[RSI],
 	}
 	klines := IndicatorstoKlines(
@@ -101,20 +102,19 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 
 		var bigOverSmallPrev bool
 		t := InitTrader(s.Asset, s.Amount)
-		index_long := s.Main.Params[SMA_long]
-		for i := 1; i < len(klines[0].Indicators[SMA_long]); i++ {
+		index_super_long := s.Main.Params[SMA_super_long]
+		fmt.Println(len(klines[0].Indicators[EMA_super_long]))
+		for i := 1; i < len(klines[0].Indicators[SMA_super_long]); i++ {
 			// check crossOver or Under
 			// implement checking or RSI in the timeframe in klines[1] or klines[2]
 			err := MeltRSIKline(klines[0], klines[2])
 			if err != nil {
 				fmt.Println(err)
 			}
-			bigOverSmallPrev = t.CrossMA(klines[0], i, index_long, &bigOverSmallPrev, &closedTrade)
+			bigOverSmallPrev = t.CrossMA(klines[0], i, index_super_long, &bigOverSmallPrev, &closedTrade)
 		}
 
 	}
-	// modify to pass.Indicators
-	// type == "Mooving Average"
 
 	prev_ratio := 1.0
 	ratio := 1.0
@@ -161,26 +161,31 @@ func MeltRSIKline(receiver *Klines, origin *Klines) error {
 	}
 	return nil
 }
-func (t *Trader) CrossMA(klines *Klines, i int, index_long int, bigOverSmallPrev *bool, closed *[]Trader) bool {
-
+func (t *Trader) CrossMA(klines *Klines, i int, index_super_long int, bigOverSmallPrev *bool, closed *[]Trader) bool {
+	offset := i + index_super_long - 1
+	f_close, err := strconv.ParseFloat(klines.Array[offset].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	closeOverMAsuperLong := f_close > klines.Indicators[SMA_super_long][i]
 	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
 
-	if !bigOverSmall && *bigOverSmallPrev {
-		f_close, err := strconv.ParseFloat(klines.Array[i+index_long-1].Close, 64)
+	if !bigOverSmall && *bigOverSmallPrev && closeOverMAsuperLong {
+		f_close, err := strconv.ParseFloat(klines.Array[offset].Close, 64)
 		if err != nil {
 			fmt.Println(err)
 		}
 		t.Buy_price = f_close
-		t.Buy_time = int64(klines.Array[i+index_long-1].CloseTime)
+		t.Buy_time = int64(klines.Array[offset].CloseTime)
 
 	}
 	if bigOverSmall && !*bigOverSmallPrev && t.Buy_time != 0 {
-		f_close, err := strconv.ParseFloat(klines.Array[i+index_long-1].Close, 64)
+		f_close, err := strconv.ParseFloat(klines.Array[offset].Close, 64)
 		if err != nil {
 			fmt.Println(err)
 		}
 		t.Sell_price = f_close
-		t.Sell_time = int64(klines.Array[i+index_long-1].CloseTime)
+		t.Sell_time = int64(klines.Array[offset].CloseTime)
 		*closed = append(*closed, *t)
 		*t = InitTrader(t.Asset, t.Amount)
 	}
@@ -192,24 +197,20 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 	params := IndicatorsParams{
 		short_period_MA: s.Main.Params[SMA_short],
 		long_period_MA:  s.Main.Params[SMA_long],
+		super_long_MA:   s.Main.Params[SMA_super_long],
 		RSI_coef:        s.Main.Params[RSI],
 	}
 	tradeOver := []Trader{}
 	result := StrategyResult{}
 	result.Ratio = 1
 
-	t := Trader{
-		Asset:           s.Asset,
-		Amount:          s.Amount,
-		IndicatorMap:    map[Indicator]float64{},
-		TradeInProgress: false,
-	}
+	t := InitTrader(s.Asset, s.Amount)
 	var prevRatio = 1.0
 	oldBalance, err := GetAssetBalance(client, "USDC")
 	if err != nil {
 		return err
 	}
-	for result.Ratio > 0.8 && result.Ratio < 1.20 {
+	for result.Ratio < 1.2 && result.Ratio > 0.8 {
 
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
 		err := MeltRSIKline(klines[0], klines[3])

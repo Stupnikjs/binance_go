@@ -9,23 +9,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var testStrategy = Strategy{
-	Amount:    0.01,
-	Asset:     "ETHUSDC",
-	Intervals: []Interval{m15, m30, h1, h2, h4},
-	Main: Signal{
-		Name: "EMA",
-		Type: "Moving Average",
-		Params: map[Indicator]int{
-			EMA_short: 9,
-			EMA_long:  20,
-		},
-	},
-}
-
 func main() {
 	// Load .env file
-	args := os.Args
 
 	err := godotenv.Load()
 	if err != nil {
@@ -39,26 +24,9 @@ func main() {
 	_ = client
 	// Get API credentials from environment variables
 
-	if len(args) > 1 && args[1] == "backtest" {
-		// err = FetchReports(client)
-		r := testStrategy.StrategyTester(client)
-		r.AppendToHistory()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-	if len(args) > 1 && args[1] == "ratio" {
-		err = FindAvgRatioPerParams()
-		if err != nil {
-			fmt.Println(err)
-		}
-	} else {
-
-		err = testStrategy.StrategyApply(client)
-		if err != nil {
-			log.Fatal(err)
-		}
-
+	err = FetchReports(client, []Interval{m5, m15, m30})
+	if err != nil {
+		fmt.Println(err)
 	}
 
 }

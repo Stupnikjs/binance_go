@@ -2,114 +2,94 @@ package main
 
 import (
 	"fmt"
-	"slices"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-func FindBestMAParams(client *binance_connector.Client, pair string, interval []Interval) {
-	var allResult []StrategyResult = make([]StrategyResult, 32*16)
-	s := Strategy{
-		Asset:     pair,
-		Amount:    0.1,
-		Intervals: interval,
-		Main: Signal{
-			Name:   "EMA",
-			Type:   "Moving Average",
-			Params: make(map[Indicator]int),
-		},
-	}
-	m := Strategy{
-		Asset:     pair,
-		Amount:    0.1,
-		Intervals: interval,
-		Main: Signal{
-			Name:   "SMA",
-			Type:   "Moving Average",
-			Params: make(map[Indicator]int),
-		},
-	}
-	for i := 4; i < 20; i++ {
-		for j := 8; j < 40; j++ {
-			start_iter := time.Now().UnixMicro()
-			if i >= j {
-				continue
-			} // i is < to j now
-			s.Main.Params[SMA_short] = i
-			s.Main.Params[SMA_long] = j
-			m.Main.Params[SMA_short] = i
-			m.Main.Params[SMA_long] = j
-			r := s.StrategyTester(client)
-			l := m.StrategyTester(client)
-			allResult = append(allResult, r)
-			allResult = append(allResult, l)
-			end_iter := time.Now().UnixMicro()
-			fmt.Printf("loop took %v \n", (end_iter - start_iter))
-		}
-	}
-	filename := fmt.Sprintf("%s_report.json", strings.ToLower(pair))
-	SaveJsonResult(filename, allResult)
+var PAIRS = []string{
+	"ADAUSDC",
+	"ALGOUSDC",
+	"BTCUSDC",
+	"BNBUSDC",
+	"ETHUSDC",
+	"HBARUSDC",
+	"LINKUSDC",
+	"XRPUSDC",
 }
 
-func ParralelFindBestMAParams(client *binance_connector.Client, pair string, interval []Interval) []StrategyResult {
+/*
+* list all reports
+* and test best params
+* then append to report
+ */
+func FetchReports(client *binance_connector.Client, intervals []Interval) error {
+
+	for _, r := range PAIRS {
+		result := ParralelTest(client, r, intervals)
+		err := AppendToReport(r, result)
+		if err != nil {
+			return err
+		}
+		time.Sleep(3 * time.Minute)
+	}
+	return nil
+}
+
+func ConvertUSDCtoPAIR(client *binance_connector.Client, USDCamount float64, pair string) float64 {
+	klines := BuildKlinesArr(client, pair, []Interval{m1})
+	f_close, err := strconv.ParseFloat(klines[0].Array[0].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return USDCamount / f_close
+}
+
+/*
+* create strategy with some for loop generated parameters
+* then test it
+ */
+func ParralelTest(client *binance_connector.Client, pair string, interval []Interval) []StrategyResult {
 	var allResult []StrategyResult
 	var wg sync.WaitGroup
 	resultsChan := make(chan StrategyResult, 32*16) // Buffered channel
 
 	// Step 1: Launch a collector goroutine
+
 	go func() {
 		for result := range resultsChan {
 			allResult = append(allResult, result)
 		}
 	}()
+	for _, pair := range PAIRS {
+		wg.Add(1) // Increment the WaitGroup counter
+		go func(pair string) {
+			defer wg.Done() // Decrement the counter when the goroutine finishes
 
-	for i := 4; i < 15; i++ {
-		for j := 10; j < 40; j += 2 {
-			if i >= j {
-				continue
+			// Create copies of the strategies for each goroutine
+			amount := ConvertUSDCtoPAIR(client, 30, pair)
+			s := Strategy{
+				Asset:     pair,
+				Amount:    amount,
+				Intervals: interval,
+				Main: Signal{
+					Name:   "EMA",
+					Type:   "Moving Average",
+					Params: make(map[Indicator]int),
+				},
 			}
+			s.Main.Params[SMA_short] = 13
+			s.Main.Params[SMA_long] = 43
+			s.Main.Params[SMA_super_long] = 200
 
-			wg.Add(1) // Increment the WaitGroup counter
-			go func(short, long int) {
-				defer wg.Done() // Decrement the counter when the goroutine finishes
+			r := s.StrategyTester(client)
 
-				// Create copies of the strategies for each goroutine
-				s := Strategy{
-					Asset:     pair,
-					Amount:    0.1,
-					Intervals: interval,
-					Main: Signal{
-						Name:   "EMA",
-						Type:   "Moving Average",
-						Params: make(map[Indicator]int),
-					},
-				}
-				m := Strategy{
-					Asset:     pair,
-					Amount:    0.1,
-					Intervals: interval,
-					Main: Signal{
-						Name:   "SMA",
-						Type:   "Moving Average",
-						Params: make(map[Indicator]int),
-					},
-				}
+			resultsChan <- r // Send result to the channel
 
-				s.Main.Params[SMA_short] = short
-				s.Main.Params[SMA_long] = long
-				m.Main.Params[SMA_short] = short
-				m.Main.Params[SMA_long] = long
+		}(pair) // Pass i and j as arguments to the goroutine
 
-				r := s.StrategyTester(client)
-				l := m.StrategyTester(client)
-
-				resultsChan <- r // Send result to the channel
-				resultsChan <- l // Send result to the channel
-			}(i, j) // Pass i and j as arguments to the goroutine
-		}
 	}
 
 	// Wait for all goroutines to finish
@@ -125,62 +105,4 @@ func ParralelFindBestMAParams(client *binance_connector.Client, pair string, int
 
 	return allResult
 
-}
-
-// find average ratio
-
-func FetchReports(client *binance_connector.Client) error {
-	reports, err := OpenReports()
-	if err != nil {
-		return err
-	}
-
-	for _, r := range reports {
-		result := ParralelFindBestMAParams(client, r, []Interval{m5, m15, m30, h1})
-		err = AppendToReport(r, result)
-		if err != nil {
-			return err
-		}
-		time.Sleep(3 * time.Minute)
-	}
-	return nil
-}
-
-func FindAvgRatioPerParams() error {
-	allReports, err := GetAllReports()
-	if err != nil {
-		return err
-	}
-	sumMap := make(map[string]float64)
-	countMap := make(map[string]float64)
-	avgMap := make(map[string]float64)
-	for _, r := range allReports {
-		str_param := fmt.Sprintf("%v_%v", r.Strategy.Main.Params[SMA_short], r.Strategy.Main.Params[SMA_long])
-		countMap[str_param] += 1
-		sumMap[str_param] += r.Ratio
-
-	}
-	for k, v := range sumMap {
-		avgMap[k] = v / countMap[k]
-	}
-	type average struct {
-		params string
-		avg    float64
-	}
-	var avg []average
-	for k, v := range avgMap {
-		avg = append(avg, average{params: k, avg: v})
-	}
-
-	slices.SortFunc(avg, func(a, b average) int {
-		if a.avg > b.avg {
-			return 1
-		}
-		if b.avg > a.avg {
-			return -1
-		}
-		return 0
-	})
-	fmt.Println(avg)
-	return nil
 }

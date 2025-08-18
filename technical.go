@@ -20,10 +20,12 @@ const (
 	RSI_2h  Indicator = "RSI_2h"
 	RSI_4h  Indicator = "RSI_4h"
 
-	SMA_short Indicator = "SMA_short"
-	EMA_short Indicator = "EMA_short"
-	SMA_long  Indicator = "SMA_long"
-	EMA_long  Indicator = "EMA_long"
+	SMA_short      Indicator = "SMA_short"
+	EMA_short      Indicator = "EMA_short"
+	SMA_long       Indicator = "SMA_long"
+	EMA_long       Indicator = "EMA_long"
+	SMA_super_long Indicator = "SMA_super_long"
+	EMA_super_long Indicator = "EMA_super_long"
 )
 
 type Interval string
@@ -50,13 +52,9 @@ type Klines struct {
 type IndicatorsParams struct {
 	short_period_MA int
 	long_period_MA  int
+	super_long_MA   int
 	RSI_coef        int
 }
-
-// Kline get upper interval
-// query upper Intervals Coefs ex RSI_1h ..
-
-// volume weighted Average Price
 
 func BuildKlinesArr(client *binance_connector.Client, pair string, Interval []Interval) []*Klines {
 	klinesArr := []*Klines{}
@@ -79,7 +77,6 @@ func BuildKlinesArr(client *binance_connector.Client, pair string, Interval []In
 	return klinesArr
 }
 
-// refactor
 func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	closingPrices := make([]float64, len(klines))
 	for i, kline := range klines {
@@ -109,11 +106,15 @@ func ProcessKlines(klines []*Klines, params IndicatorsParams) []*Klines {
 		SMA_long_arr := SMAcalc(close, params.long_period_MA)
 		EMA_short_arr := EMAcalc(close, params.short_period_MA)
 		EMA_long_arr := EMAcalc(close, params.long_period_MA)
+		SMA_super_long_arr := SMAcalc(close, params.super_long_MA)
+		EMA_super_long_arr := EMAcalc(close, params.super_long_MA)
 		k.Indicators[RSI] = RSI_arr
 		k.Indicators[SMA_short] = SMA_short_arr
 		k.Indicators[SMA_long] = SMA_long_arr
 		k.Indicators[EMA_short] = EMA_short_arr
 		k.Indicators[EMA_long] = EMA_long_arr
+		k.Indicators[SMA_super_long] = SMA_super_long_arr
+		k.Indicators[EMA_super_long] = EMA_super_long_arr
 	}
 	return klines
 }
