@@ -24,6 +24,7 @@ type Signal struct {
 }
 
 type Trader struct {
+	Client          *binance_connector.Client
 	Asset           string
 	Amount          float64
 	IndicatorMap    map[Indicator]float64
@@ -35,10 +36,11 @@ type Trader struct {
 }
 
 type StrategyResult struct {
-	StartStamp int // BORDERS OF THE SAMPLE TESTED
+	Pair       string
+	StartStamp int
 	EndStamp   int
 	Ratio      float64
-	Strategy   *Strategy
+	Params     map[Indicator]int
 }
 
 func InitTrader(pair string, amount float64) Trader {
@@ -49,10 +51,11 @@ func InitTrader(pair string, amount float64) Trader {
 		IndicatorMap:    make(map[Indicator]float64),
 	}
 }
-func (s *Strategy) InitResult(klines []*binance_connector.KlinesResponse) StrategyResult {
+func (s *Strategy) InitResult(pair string, klines []*binance_connector.KlinesResponse) StrategyResult {
 	result := StrategyResult{}
 	result.StartStamp = int(klines[0].CloseTime)
 	result.EndStamp = int(klines[len(klines)-1].CloseTime)
+	result.Pair = pair
 	return result
 }
 
@@ -92,7 +95,7 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 		s.Intervals,
 		params)
 
-	result := s.InitResult(klines[0].Array)
+	result := s.InitResult(s.Asset, klines[0].Array)
 	closedTrade := []Trader{}
 
 	if s.Main.Type == "Moving Average" {
@@ -102,8 +105,7 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 
 		var bigOverSmallPrev bool
 		t := InitTrader(s.Asset, s.Amount)
-		index_super_long := s.Main.Params[SMA_super_long]
-		fmt.Println(len(klines[0].Indicators[EMA_super_long]))
+		offset := s.Main.Params[SMA_super_long]
 		for i := 1; i < len(klines[0].Indicators[SMA_super_long]); i++ {
 			// check crossOver or Under
 			// implement checking or RSI in the timeframe in klines[1] or klines[2]
@@ -111,7 +113,8 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 			if err != nil {
 				fmt.Println(err)
 			}
-			bigOverSmallPrev = t.CrossMA(klines[0], i, index_super_long, &bigOverSmallPrev, &closedTrade)
+			// pass index offset
+			bigOverSmallPrev = t.CrossMA(klines[0], i, offset, &bigOverSmallPrev, &closedTrade, true)
 		}
 
 	}
@@ -124,7 +127,7 @@ func (s *Strategy) StrategyTester(client *binance_connector.Client) StrategyResu
 
 	}
 	result.Ratio = ratio
-	result.Strategy = s
+	result.Params = s.Main.Params
 	return result
 }
 
@@ -161,37 +164,6 @@ func MeltRSIKline(receiver *Klines, origin *Klines) error {
 	}
 	return nil
 }
-func (t *Trader) CrossMA(klines *Klines, i int, index_super_long int, bigOverSmallPrev *bool, closed *[]Trader) bool {
-	offset := i + index_super_long - 1
-	f_close, err := strconv.ParseFloat(klines.Array[offset].Close, 64)
-	if err != nil {
-		fmt.Println(err)
-	}
-	closeOverMAsuperLong := f_close > klines.Indicators[SMA_super_long][i]
-	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
-
-	if !bigOverSmall && *bigOverSmallPrev && closeOverMAsuperLong {
-		f_close, err := strconv.ParseFloat(klines.Array[offset].Close, 64)
-		if err != nil {
-			fmt.Println(err)
-		}
-		t.Buy_price = f_close
-		t.Buy_time = int64(klines.Array[offset].CloseTime)
-
-	}
-	if bigOverSmall && !*bigOverSmallPrev && t.Buy_time != 0 {
-		f_close, err := strconv.ParseFloat(klines.Array[offset].Close, 64)
-		if err != nil {
-			fmt.Println(err)
-		}
-		t.Sell_price = f_close
-		t.Sell_time = int64(klines.Array[offset].CloseTime)
-		*closed = append(*closed, *t)
-		*t = InitTrader(t.Asset, t.Amount)
-	}
-	return bigOverSmall
-
-}
 
 func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 	params := IndicatorsParams{
@@ -210,28 +182,15 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 	if err != nil {
 		return err
 	}
+	var bigOverSmallPrev bool
 	for result.Ratio < 1.2 && result.Ratio > 0.8 {
 
+		// fetch new kline
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
-		err := MeltRSIKline(klines[0], klines[3])
-		if err != nil {
-			return err
-		}
-		var MA_short, MA_long []float64
-		var bullish, bearishPrev bool
-		if s.Main.Name == "SMA" {
-			MA_short = klines[0].Indicators[SMA_short]
-			MA_long = klines[0].Indicators[SMA_long]
-			bearishPrev = MA_short[len(MA_short)-2] < MA_long[len(MA_long)-2]
-			bullish = MA_short[len(MA_short)-1] < MA_long[len(MA_long)-1]
-		}
-		if s.Main.Name == "EMA" {
-			MA_short = klines[0].Indicators[EMA_short]
-			MA_long = klines[0].Indicators[EMA_long]
-			bearishPrev = MA_short[len(MA_short)-2] < MA_long[len(MA_long)-2]
-			bullish = MA_short[len(MA_short)-1] < MA_long[len(MA_long)-1]
-		}
-		if bearishPrev && bullish && t.Buy_time == 0 {
+		// err := MeltRSIKline(klines[0], klines[3]) NOT USED YET
+		bigOverSmall := t.CrossMA(klines[0], len(klines[0].Array)-1, 0, &bigOverSmallPrev, &tradeOver, false)
+
+		if !bigOverSmall && bigOverSmallPrev && !t.TradeInProgress {
 
 			err = t.Buy(client)
 			fmt.Printf("Buying at %v %v \n", t.Buy_time, t.Buy_price)
@@ -239,7 +198,7 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 				return err
 			}
 		}
-		if !bearishPrev && !bullish && t.Buy_time != 0 {
+		if bigOverSmall && !bigOverSmallPrev && t.TradeInProgress {
 			err := t.Sell(client)
 			fmt.Printf("Selling at %v %v \n", t.Sell_time, t.Sell_price)
 			if err != nil {
@@ -260,7 +219,9 @@ func (s *Strategy) StrategyApply(client *binance_connector.Client) error {
 				Amount:       s.Amount,
 				IndicatorMap: map[Indicator]float64{},
 			}
+
 		}
+		bigOverSmallPrev = bigOverSmall
 
 	}
 	filename := fmt.Sprintf("%s_trade_report.json", s.Asset)
@@ -320,6 +281,16 @@ func (t *Trader) Buy(client *binance_connector.Client) error {
 	}
 	return nil
 }
+
+func (t *Trader) BuyTest(k *Klines, offset int) {
+	f_close, err := strconv.ParseFloat(k.Array[offset].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	t.Buy_price = f_close
+	t.Buy_time = int64(k.Array[offset].CloseTime)
+}
+
 func (t *Trader) Sell(client *binance_connector.Client) error {
 	if t.TradeInProgress {
 		response, err := client.NewCreateOrderService().
@@ -357,6 +328,17 @@ func (t *Trader) Sell(client *binance_connector.Client) error {
 
 	}
 	return nil
+}
+
+func (t *Trader) SellTest(k *Klines, offset int, closed *[]Trader) {
+	f_close, err := strconv.ParseFloat(k.Array[offset].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	t.Sell_price = f_close
+	t.Sell_time = int64(k.Array[offset].CloseTime)
+	*closed = append(*closed, *t)
+	*t = InitTrader(t.Asset, t.Amount)
 }
 
 func GetAssetBalance(client *binance_connector.Client, asset string) (float64, error) {

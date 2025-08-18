@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
-	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
@@ -14,6 +13,8 @@ var PAIRS = []string{
 	"ALGOUSDC",
 	"BTCUSDC",
 	"BNBUSDC",
+	"XLMUSDC",
+	"SUIUSDC",
 	"ETHUSDC",
 	"HBARUSDC",
 	"LINKUSDC",
@@ -29,11 +30,11 @@ func FetchReports(client *binance_connector.Client, intervals []Interval) error 
 
 	for _, r := range PAIRS {
 		result := ParralelTest(client, r, intervals)
-		err := AppendToReport(r, result)
+		err := AppendToReport(r, result, intervals[0])
 		if err != nil {
 			return err
 		}
-		time.Sleep(3 * time.Minute)
+
 	}
 	return nil
 }
@@ -105,4 +106,17 @@ func ParralelTest(client *binance_connector.Client, pair string, interval []Inte
 
 	return allResult
 
+}
+
+func GiveReportData(interval Interval) {
+	results, err := ReadReport(interval)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	sum_avg_ratio := 0.0
+	for _, r := range results {
+		sum_avg_ratio += r.Ratio
+	}
+	fmt.Printf("avg ratio from report %f", sum_avg_ratio/float64(len(results)))
 }

@@ -24,10 +24,12 @@ func main() {
 	_ = client
 	// Get API credentials from environment variables
 
-	err = FetchReports(client, []Interval{m5, m15, m30})
+	err = FetchReports(client, []Interval{m5, m15, m30, h1})
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	GiveReportData(m5)
 
 }
 
