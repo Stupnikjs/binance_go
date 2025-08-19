@@ -47,7 +47,7 @@ func (t *LiveTrader) ParseResponse(response interface{}) (*CreateOrderResponse, 
 	return &orderResponse, nil
 }
 
-func (t *Trader) BuildOrder(client *binance_connector.Client, orderType string) (interface{}, error) {
+func (t *LiveTrader) BuildOrder(client *binance_connector.Client, orderType string) (interface{}, error) {
 	return client.NewCreateOrderService().
 		Symbol(t.Asset).
 		Side(orderType).

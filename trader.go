@@ -20,6 +20,8 @@ type BackTestTrader struct {
 	Buy_time     int64
 	Sell_price   float64
 	Sell_time    int64
+	Klines       *Klines // Needed for backtesting
+	Index        int     // Current index in the Klines array
 }
 type LiveTrader struct {
 	Id           int64
@@ -35,8 +37,11 @@ type LiveTrader struct {
 }
 
 type ITTrader interface {
-	Buy(*Klines, int) error
-	Sell(*Klines, int) error
+	Buy() error
+	Sell() error
+	Loop(klines *Klines, prevOver *bool, i int) (bool, error)
+	// We'll also add a method to check if the trade is over.
+	IsTradeOver() bool
 }
 
 func (t *LiveTrader) Buy() error {
@@ -103,22 +108,82 @@ func (t *LiveTrader) Sell() error {
 	return nil
 }
 
-func (t *BackTestTrader) Buy(k *Klines, i int) {
-	f_close, err := strconv.ParseFloat(k.Array[i].Close, 64)
-	if err != nil {
-		fmt.Println(err)
+func (t *LiveTrader) Loop(klines *Klines, prevOver *bool, i int) (bool, error) {
+	// Your CrossOver logic, adapted for the LiveTrader struct.
+	closeOverMAsuperLong := OverSuperLong(klines, i)
+	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
+
+	if !bigOverSmall && *prevOver && closeOverMAsuperLong {
+		if err := t.Buy(); err != nil {
+			return false, err
+		}
 	}
-	t.Buy_price = f_close
-	t.Buy_time = int64(k.Array[i].CloseTime)
+	if bigOverSmall && !*prevOver && t.Buy_time != 0 {
+		if err := t.Sell(); err != nil {
+			return false, err
+		}
+	}
+	return bigOverSmall, nil
 }
 
-func (t *BackTestTrader) Sell(k *Klines, i int) {
-	f_close, err := strconv.ParseFloat(k.Array[i].Close, 64)
+// InitLiveTrader initializes a new LiveTrader instance.
+func InitLiveTrader(pair string, amount float64, client *binance_connector.Client) *LiveTrader {
+	return &LiveTrader{
+		Asset:        pair,
+		Amount:       amount,
+		Client:       client,
+		IndicatorMap: make(map[Indicator]float64),
+	}
+}
+
+// Buy simulates a buy order.
+func (t *BackTestTrader) Buy() error {
+	f_close, err := strconv.ParseFloat(t.Klines.Array[t.Index].Close, 64)
 	if err != nil {
-		fmt.Println(err)
+		return err
+	}
+	t.Buy_price = f_close
+	t.Buy_time = int64(t.Klines.Array[t.Index].CloseTime)
+	fmt.Printf("Backtest Buy at %.2f\n", t.Buy_price)
+	return nil
+}
+func (t *BackTestTrader) Sell() error {
+	f_close, err := strconv.ParseFloat(t.Klines.Array[t.Index].Close, 64)
+	if err != nil {
+		return err
 	}
 	t.Sell_price = f_close
-	t.Sell_time = int64(k.Array[i].CloseTime)
+	t.Sell_time = int64(t.Klines.Array[t.Index].CloseTime)
 	t.TradeOver = true
+	fmt.Printf("Backtest Sell at %.2f\n", t.Sell_price)
+	return nil
+}
 
+func (t *BackTestTrader) Loop(klines *Klines, prevOver *bool, i int) (bool, error) {
+	t.Klines = klines
+	t.Index = i
+
+	closeOverMAsuperLong := OverSuperLong(klines, i)
+	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
+
+	if !bigOverSmall && *prevOver && closeOverMAsuperLong {
+		if err := t.Buy(); err != nil {
+			return false, err
+		}
+	}
+	if bigOverSmall && !*prevOver && t.Buy_time != 0 {
+		if err := t.Sell(); err != nil {
+			return false, err
+		}
+	}
+	return bigOverSmall, nil
+}
+
+func InitBackTestTrader(pair string, amount float64, klines *Klines) *BackTestTrader {
+	return &BackTestTrader{
+		Asset:        pair,
+		Amount:       amount,
+		IndicatorMap: make(map[Indicator]float64),
+		Klines:       klines,
+	}
 }

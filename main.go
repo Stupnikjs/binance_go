@@ -12,7 +12,6 @@ import (
 var testStrat Strategy = Strategy{
 	Asset:     "BTCUSDC",
 	Amount:    0.001,
-	Looper:    CrossOver,
 	Intervals: []Interval{m5, m15, m30, h1},
 	Main: Signal{
 		Name:   "EMA",

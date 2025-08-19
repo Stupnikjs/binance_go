@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	binance_connector "github.com/binance/binance-connector-go"
@@ -11,7 +10,6 @@ import (
 type Strategy struct {
 	Asset     string
 	Amount    float64
-	Looper    func(*Trader, *Klines, *bool, int) bool
 	Intervals []Interval // first interval is the main interval where we want to trade market
 	Main      Signal
 }
@@ -38,12 +36,6 @@ func (s *Strategy) InitResult(pair string, klines []*binance_connector.KlinesRes
 	return result
 }
 
-func InitBackTestTrader() BackTestTrader {
-	return BackTestTrader{}
-}
-func InitLiveTrader() LiveTrader {
-	return LiveTrader{}
-}
 func (s *Strategy) SetupParams() IndicatorsParams {
 	return IndicatorsParams{
 		short_period_MA: s.Main.Params[SMA_short],
@@ -64,17 +56,12 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 
 	result := s.InitResult(s.Asset, klines[0].Array)
 	closedTrade := []BackTestTrader{}
-	var bigOverSmallPrev bool
-	t := InitTrader(s.Asset, s.Amount)
-	fmt.Println(len(klines[0].Array), len(klines[0].Indicators[SMA_long]), len(klines[0].Indicators[SMA_short]))
-	for i := 0; i < len(klines[0].Indicators[SMA_super_long]); i++ {
-		_ = MeltRSIKline(klines[0], klines[2])
-		bigOverSmall := s.Looper(&t, klines[0], &bigOverSmallPrev, i)
-		bigOverSmallPrev = bigOverSmall
-		if t.TradeOver {
-			closedTrade = append(closedTrade, t)
-			t = InitTrader(s.Asset, s.Amount)
-		}
+	var prev bool
+	t := InitBackTestTrader(s.Asset, s.Amount, klines[0])
+
+	for i := 0; i < len(klines[0].Indicators[SMA_super_long])-1; i++ {
+		curr, _ := t.Loop(klines[0], &prev, len(klines[0].Indicators[SMA_super_long])-1)
+		prev = curr
 
 	}
 
@@ -90,77 +77,26 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 	return result
 }
 
-func (s *Strategy) Run(client *binance_connector.Client) error {
+func (s *Strategy) Run(client *binance_connector.Client) ([]LiveTrader, error) {
 
 	// setup
 	params := s.SetupParams()
-	tradeOver := []Trader{}
+	tradeOver := []LiveTrader{}
 	result := StrategyResult{}
 	result.Ratio = 1
-	t := InitTrader(s.Asset, s.Amount)
-	var prevRatio = 1.0
-	oldBalance, err := GetAssetBalance(client, "USDC")
-	if err != nil {
-		return err
-	}
-
-	var bigOverSmallPrev bool
-	for result.Ratio < 1.2 && result.Ratio > 0.8 {
-		// fetch new kline each loop turn
+	t := InitLiveTrader(s.Asset, s.Amount, client)
+	prev := false
+	for {
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
-		i := len(klines[0].Array) - 1
-
-		// compare last items of SMA
-		overSuperLong := OverSuperLong(klines[0], i)
-		bigOverSmall := klines[0].Indicators[SMA_short][i] <
-			klines[0].Indicators[SMA_long][i]
-
-		if !bigOverSmall && bigOverSmallPrev && t.Buy_time == 0 && overSuperLong {
-			err = t.BuyFuncs.Func(t, client)
-			// placer un stop loss
-			fmt.Printf("Buying at %v %v \n", t.Buy_time, t.Buy_price)
-			if err != nil {
-				return err
-			}
+		curr, _ := t.Loop(klines[0], &prev, len(klines[0].Array)-1)
+		prev = curr
+		if t.TradeOver {
+			tradeOver = append(tradeOver, *t)
+			t = InitLiveTrader(s.Asset, s.Amount, client)
 		}
-		if bigOverSmall && !bigOverSmallPrev && t.Buy_time != 0 {
-			err := t.Sell(client)
-			fmt.Printf("Selling at %v %v \n", t.Sell_time, t.Sell_price)
-			if err != nil {
-				return err
-			}
-			newBalance, err := GetAssetBalance(client, "USDC")
-			if err != nil {
-				return err
-			}
-			fmt.Printf("balance USDC: %v \n", newBalance-oldBalance)
-
-			tradeOver = append(tradeOver, t)
-			ratio := (t.Sell_price - t.Buy_price) * prevRatio
-			result.Ratio = ratio
-			fmt.Printf("Ratio : %v \n", ratio)
-			prevRatio = ratio
-			t = InitTrader(s.Asset, s.Amount)
-
-		}
-		bigOverSmallPrev = bigOverSmall
-
 	}
-	filename := fmt.Sprintf("%s_trade_report.json", s.Asset)
-	SaveJsonTrader(filename, tradeOver)
-	return nil
-}
 
-func CrossOver(t *ITTrader, klines *Klines, prev *bool, i int) bool {
-	closeOverMAsuperLong := OverSuperLong(klines, i)
-	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
-	if !bigOverSmall && *prev && closeOverMAsuperLong {
-		t.Buy(klines, i)
-	}
-	if bigOverSmall && !*prev && t.Buy_time != 0 {
-		t.SellTest(klines, i)
-	}
-	return bigOverSmall
+	return tradeOver, nil
 }
 
 // decomposer fonction

@@ -42,17 +42,6 @@ func SaveJsonResult(filename string, results []StrategyResult) {
 	}
 
 }
-func SaveJsonTrader(filename string, Traders []Trader) {
-	finalBytes, err := json.Marshal(Traders)
-	if err != nil {
-		fmt.Println(err)
-	}
-	err = os.WriteFile(filename, finalBytes, 0644)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-}
 
 func AppendToReport(pair string, results []StrategyResult, interval Interval) error {
 	path := fmt.Sprintf("report_%s.json", interval)
