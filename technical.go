@@ -93,11 +93,11 @@ func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 // error checking
 func IndicatorstoKlines(client *binance_connector.Client, pair string, intervals []Interval, params IndicatorsParams) []*Klines {
 	klinesArr := BuildKlinesArr(client, pair, intervals)
-	ProcessKlines(klinesArr, params)
+	ProcessKlinesNormalized(klinesArr, params)
 	return klinesArr
 }
 
-func ProcessKlines(klines []*Klines, params IndicatorsParams) []*Klines {
+func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Klines {
 	for _, k := range klines {
 		// caclulate RSI EMA SMA
 		close := CloseFromKlines(k.Array)
@@ -108,16 +108,52 @@ func ProcessKlines(klines []*Klines, params IndicatorsParams) []*Klines {
 		EMA_long_arr := EMAcalc(close, params.long_period_MA)
 		SMA_super_long_arr := SMAcalc(close, params.super_long_MA)
 		EMA_super_long_arr := EMAcalc(close, params.super_long_MA)
-		k.Indicators[RSI] = RSI_arr
-		k.Indicators[SMA_short] = SMA_short_arr
-		k.Indicators[SMA_long] = SMA_long_arr
-		k.Indicators[EMA_short] = EMA_short_arr
-		k.Indicators[EMA_long] = EMA_long_arr
+
+		// return sliced array of same length
+		offset := params.super_long_MA
+		k.Array = k.Array[offset-1:]
+		k.Indicators[RSI] = RSI_arr[offset:]
+		k.Indicators[SMA_short] = SMA_short_arr[offset-params.short_period_MA:]
+		k.Indicators[SMA_long] = SMA_long_arr[offset-params.long_period_MA:]
+		k.Indicators[EMA_short] = EMA_short_arr[offset-params.short_period_MA:]
+		k.Indicators[EMA_long] = EMA_long_arr[offset-params.long_period_MA:]
 		k.Indicators[SMA_super_long] = SMA_super_long_arr
 		k.Indicators[EMA_super_long] = EMA_super_long_arr
+
 	}
 	return klines
 }
+
+func MeltRSIKline(receiver *Klines, origin *Klines) error {
+	RSI_origin := origin.Indicators[RSI]
+	var targetIndicator Indicator
+	// switch on Intervals
+	switch origin.Interval {
+	case m15:
+		targetIndicator = RSI_15m
+	case m30:
+		targetIndicator = RSI_30m
+	case h1:
+		targetIndicator = RSI_1h
+	case h2:
+		targetIndicator = RSI_2h
+	case h4:
+		targetIndicator = RSI_4h
+	default:
+		return fmt.Errorf("no indicator valid found")
+	}
+	n := 0
+	for i := range origin.Array {
+		curr := origin.Array[n]
+		if receiver.Array[i].CloseTime < curr.CloseTime {
+			receiver.Indicators[targetIndicator][i] = RSI_origin[i]
+		}
+
+	}
+	return nil
+}
+
+/*      Indicator Calculation       */
 
 func SMAcalc(closingPrices []float64, period int) []float64 {
 	var SMA []float64

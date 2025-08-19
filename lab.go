@@ -85,7 +85,7 @@ func ParralelTest(client *binance_connector.Client, pair string, interval []Inte
 			s.Main.Params[SMA_long] = 43
 			s.Main.Params[SMA_super_long] = 200
 
-			r := s.StrategyTester(client)
+			r := s.Test(client)
 
 			resultsChan <- r // Send result to the channel
 
