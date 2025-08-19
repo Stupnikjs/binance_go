@@ -9,6 +9,18 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var testStrat Strategy = Strategy{
+	Asset:     "BTCUSDC",
+	Amount:    0.001,
+	Looper:    CrossOver,
+	Intervals: []Interval{m5, m15, m30, h1},
+	Main: Signal{
+		Name:   "EMA",
+		Type:   "Moving Average",
+		Params: make(map[Indicator]int),
+	},
+}
+
 func main() {
 	// Load .env file
 
@@ -22,15 +34,24 @@ func main() {
 
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
-	// Get API credentials from environment variables
 
-	err = FetchReports(client, []Interval{m5, m15, m30, h1})
+	testStrat.Main.Params[SMA_short] = 13
+	testStrat.Main.Params[SMA_long] = 43
+	testStrat.Main.Params[SMA_super_long] = 200
+
+	err = testStrat.Run(client)
 	if err != nil {
 		fmt.Println(err)
 	}
+	// Get API credentials from environment variables
+	/*
+		err = FetchReports(client, []Interval{m5, m15, m30, h1})
+		if err != nil {
+			fmt.Println(err)
+		}
 
-	GiveReportData(m5)
-
+		GiveReportData(m5)
+	*/
 }
 
 // creer des commandes pour backtester

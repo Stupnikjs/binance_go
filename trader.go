@@ -9,9 +9,39 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-func (t *Trader) Buy(client *binance_connector.Client) error {
+type BackTestTrader struct {
+	Id           int64
+	Client       *binance_connector.Client
+	Asset        string
+	Amount       float64
+	IndicatorMap map[Indicator]float64
+	TradeOver    bool
+	Buy_price    float64
+	Buy_time     int64
+	Sell_price   float64
+	Sell_time    int64
+}
+type LiveTrader struct {
+	Id           int64
+	Client       *binance_connector.Client
+	Asset        string
+	Amount       float64
+	IndicatorMap map[Indicator]float64
+	TradeOver    bool
+	Buy_price    float64
+	Buy_time     int64
+	Sell_price   float64
+	Sell_time    int64
+}
+
+type ITTrader interface {
+	Buy(*Klines, int) error
+	Sell(*Klines, int) error
+}
+
+func (t *LiveTrader) Buy() error {
 	if !t.TradeOver {
-		response, err := t.BuildOrder(client, "BUY")
+		response, err := t.BuildOrder(t.Client, "BUY")
 
 		if err != nil {
 			return err
@@ -27,6 +57,7 @@ func (t *Trader) Buy(client *binance_connector.Client) error {
 		}
 		t.Buy_price = float_price
 		t.Buy_time = orderResponse.TransactTime
+		t.Id = orderResponse.OrderID
 		fmt.Printf("trade opened %v", t)
 		return err
 
@@ -34,9 +65,9 @@ func (t *Trader) Buy(client *binance_connector.Client) error {
 	return nil
 }
 
-func (t *Trader) Sell(client *binance_connector.Client) error {
+func (t *LiveTrader) Sell() error {
 	if !t.TradeOver {
-		response, err := client.NewCreateOrderService().
+		response, err := t.Client.NewCreateOrderService().
 			Symbol(t.Asset).
 			Side("SELL").
 			Type("MARKET").
@@ -70,4 +101,24 @@ func (t *Trader) Sell(client *binance_connector.Client) error {
 
 	}
 	return nil
+}
+
+func (t *BackTestTrader) Buy(k *Klines, i int) {
+	f_close, err := strconv.ParseFloat(k.Array[i].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	t.Buy_price = f_close
+	t.Buy_time = int64(k.Array[i].CloseTime)
+}
+
+func (t *BackTestTrader) Sell(k *Klines, i int) {
+	f_close, err := strconv.ParseFloat(k.Array[i].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	t.Sell_price = f_close
+	t.Sell_time = int64(k.Array[i].CloseTime)
+	t.TradeOver = true
+
 }

@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -32,7 +31,7 @@ type Fill struct {
 	CommissionAsset string `json:"commissionAsset"`
 }
 
-func (t *Trader) ParseResponse(response interface{}) (*CreateOrderResponse, error) {
+func (t *LiveTrader) ParseResponse(response interface{}) (*CreateOrderResponse, error) {
 	var orderResponse CreateOrderResponse
 	jsonBytes, err := json.Marshal(response)
 	if err != nil {
@@ -61,4 +60,5 @@ func (t *Trader) BuildOrder(client *binance_connector.Client, orderType string) 
 func BuildStopLoss() {
 	return
 }
+
 // store trade id from api
