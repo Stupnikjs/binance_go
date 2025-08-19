@@ -86,7 +86,7 @@ func (s *Strategy) Run(client *binance_connector.Client) ([]LiveTrader, error) {
 	result.Ratio = 1
 	t := InitLiveTrader(s.Asset, s.Amount, client)
 	prev := false
-	for {
+	for len(tradeOver) < 10 {
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
 		curr, _ := t.Loop(klines[0], &prev, len(klines[0].Array)-1)
 		prev = curr

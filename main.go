@@ -38,10 +38,11 @@ func main() {
 	testStrat.Main.Params[SMA_long] = 43
 	testStrat.Main.Params[SMA_super_long] = 200
 
-	err = testStrat.Run(client)
+	t := testStrat.Test(client)
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println(t)
 	// Get API credentials from environment variables
 	/*
 		err = FetchReports(client, []Interval{m5, m15, m30, h1})
