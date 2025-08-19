@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -60,3 +61,4 @@ func (t *Trader) BuildOrder(client *binance_connector.Client, orderType string) 
 func BuildStopLoss() {
 	return
 }
+// store trade id from api
