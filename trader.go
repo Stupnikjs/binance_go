@@ -7,10 +7,11 @@ import (
 	"strconv"
 
 	binance_connector "github.com/binance/binance-connector-go"
+	"github.com/google/uuid"
 )
 
 type BackTestTrader struct {
-	Id           int64
+	Id           uuid.UUID
 	Client       *binance_connector.Client
 	Asset        string
 	Amount       float64
@@ -161,29 +162,33 @@ func (t *BackTestTrader) Sell() error {
 
 func (t *BackTestTrader) Loop(klines *Klines, prevOver *bool, i int) (bool, error) {
 	t.Klines = klines
-	t.Index = i
+	t.Index += 1
 
 	closeOverMAsuperLong := OverSuperLong(klines, i)
 	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
 
-	if !bigOverSmall && *prevOver && closeOverMAsuperLong {
+	if !bigOverSmall && *prevOver && closeOverMAsuperLong && t.Buy_time == 0 {
 		if err := t.Buy(); err != nil {
 			return false, err
 		}
 	}
-	if bigOverSmall && !*prevOver && t.Buy_time != 0 {
+	if bigOverSmall && !*prevOver && t.Buy_time != 0 && t.Sell_time == 0 {
 		if err := t.Sell(); err != nil {
 			return false, err
 		}
+
 	}
 	return bigOverSmall, nil
 }
 
 func InitBackTestTrader(pair string, amount float64, klines *Klines) *BackTestTrader {
 	return &BackTestTrader{
+		Id:           uuid.New(),
 		Asset:        pair,
 		Amount:       amount,
 		IndicatorMap: make(map[Indicator]float64),
 		Klines:       klines,
+		Index:        0,
+		TradeOver:    false,
 	}
 }

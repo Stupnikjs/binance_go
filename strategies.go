@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
@@ -60,8 +62,13 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 	t := InitBackTestTrader(s.Asset, s.Amount, klines[0])
 
 	for i := 0; i < len(klines[0].Indicators[SMA_super_long])-1; i++ {
-		curr, _ := t.Loop(klines[0], &prev, len(klines[0].Indicators[SMA_super_long])-1)
+		curr, _ := t.Loop(klines[0], &prev, i)
 		prev = curr
+		if t.TradeOver {
+			closedTrade = append(closedTrade, *t)
+			t = InitBackTestTrader(s.Asset, s.Amount, klines[0])
+
+		}
 
 	}
 
@@ -72,6 +79,7 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 		prev_ratio = ratio
 
 	}
+	fmt.Println(len(closedTrade))
 	result.Ratio = ratio
 	result.Params = s.Main.Params
 	return result
@@ -94,6 +102,7 @@ func (s *Strategy) Run(client *binance_connector.Client) ([]LiveTrader, error) {
 			tradeOver = append(tradeOver, *t)
 			t = InitLiveTrader(s.Asset, s.Amount, client)
 		}
+		time.Sleep(IntervalToTime(s.Intervals[0]))
 	}
 
 	return tradeOver, nil

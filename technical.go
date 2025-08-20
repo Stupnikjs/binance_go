@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
@@ -39,6 +40,19 @@ const (
 	h2  Interval = "2h"
 	h4  Interval = "4h"
 )
+
+func IntervalToTime(interval Interval) time.Duration {
+
+	timestring := string(interval)
+	lastletter := timestring[len(timestring)-1]
+	if lastletter == 'm' {
+		if len(timestring) == 3 {
+			intString, _ := strconv.ParseInt(timestring[:2], 10, 2)
+			return time.Duration(intString) * time.Minute
+
+		}
+	}
+}
 
 var Interv = []Interval{m1, m5, m15, m30, h1, h2, h4}
 

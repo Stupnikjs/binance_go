@@ -10,9 +10,9 @@ import (
 )
 
 var testStrat Strategy = Strategy{
-	Asset:     "BTCUSDC",
-	Amount:    0.001,
-	Intervals: []Interval{m5, m15, m30, h1},
+	Asset:     "ETHUSDC",
+	Amount:    0.002,
+	Intervals: []Interval{m1, m5, m15, m30, h1},
 	Main: Signal{
 		Name:   "EMA",
 		Type:   "Moving Average",
@@ -34,15 +34,17 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
 
-	testStrat.Main.Params[SMA_short] = 13
-	testStrat.Main.Params[SMA_long] = 43
+	testStrat.Main.Params[SMA_short] = 9
+	testStrat.Main.Params[SMA_long] = 15
 	testStrat.Main.Params[SMA_super_long] = 200
 
-	t := testStrat.Test(client)
+	t, err := testStrat.Run(client)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(t)
+
+	_ = t
+
 	// Get API credentials from environment variables
 	/*
 		err = FetchReports(client, []Interval{m5, m15, m30, h1})
