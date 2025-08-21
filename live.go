@@ -20,6 +20,7 @@ type LiveTrader struct {
 	Buy_time     int64
 	Sell_price   float64
 	Sell_time    int64
+	StopPrice    float64
 }
 
 func (t *LiveTrader) Buy() error {
@@ -85,22 +86,40 @@ func (t *LiveTrader) Sell() error {
 }
 
 func (t *LiveTrader) Loop(klines *Klines, prevOver *bool, i int) (bool, error) {
+	fmt.Print("-")
 	// Your CrossOver logic, adapted for the LiveTrader struct.
 	closeOverMAsuperLong := OverSuperLong(klines, i)
 
 	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
+	f_close, err := strconv.ParseFloat(klines.Array[i-1].Close, 64)
+	if err != nil {
+		return false, err
+	}
+	if t.StopPrice >= f_close {
+		t.TradeOver = true
 
+		return bigOverSmall, nil
+	}
 	if !bigOverSmall && *prevOver && closeOverMAsuperLong {
 		if err := t.Buy(); err != nil {
+
+			err = t.SetStop(f_close)
 			return false, err
 		}
+
 	}
 	if bigOverSmall && !*prevOver && t.Buy_time != 0 {
 		if err := t.Sell(); err != nil {
-			return false, err
+			return true, err
 		}
 	}
 	return bigOverSmall, nil
+}
+
+func (t *LiveTrader) SetStop(price float64) error {
+	t.StopPrice = price
+	return t.BuildStopLoss(t.Client, price)
+
 }
 
 // InitLiveTrader initializes a new LiveTrader instance.

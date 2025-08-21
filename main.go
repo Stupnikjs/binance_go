@@ -9,17 +9,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var testStrat Strategy = Strategy{
-	Asset:     "HBARUSDC",
-	Amount:    0.002,
-	Intervals: []Interval{m5, m15, m30, h1},
-	Main: Signal{
-		Name:   "EMA",
-		Type:   "Moving Average",
-		Params: make(map[Indicator]int),
-	},
-}
-
 func main() {
 	// Load .env file
 
@@ -34,16 +23,52 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
 
-	testStrat.Main.Params[SMA_short] = 9
-	testStrat.Main.Params[SMA_long] = 15
-	testStrat.Main.Params[SMA_super_long] = 200
-
-	r := testStrat.Test(client)
-
-	fmt.Println(r)
+	Run(client)
 
 	// Get API credentials from environment variable
 
 }
 
 // creer des commandes pour backtester
+
+func Test(client *binance_connector.Client) {
+
+	var testStrat Strategy = Strategy{
+		Asset:     "ETHUSDC",
+		Amount:    0.002,
+		Intervals: []Interval{m5, m15, m30, h1},
+		Main: Signal{
+			Name:   "EMA",
+			Type:   "Moving Average",
+			Params: make(map[Indicator]int),
+		},
+	}
+
+	testStrat.Main.Params[SMA_short] = 9
+	testStrat.Main.Params[SMA_long] = 15
+	testStrat.Main.Params[SMA_super_long] = 200
+	r := testStrat.Test(client)
+	fmt.Println(r)
+}
+
+func Run(client *binance_connector.Client) {
+	var testStrat Strategy = Strategy{
+		Asset:     "ETHUSDC",
+		Amount:    0.002,
+		Intervals: []Interval{m1, m5, m15, m30, h1},
+		Main: Signal{
+			Name:   "EMA",
+			Type:   "Moving Average",
+			Params: make(map[Indicator]int),
+		},
+	}
+
+	testStrat.Main.Params[SMA_short] = 9
+	testStrat.Main.Params[SMA_long] = 15
+	testStrat.Main.Params[SMA_super_long] = 200
+
+	err := testStrat.Run(client)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
