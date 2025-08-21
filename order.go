@@ -57,8 +57,18 @@ func (t *LiveTrader) BuildOrder(client *binance_connector.Client, orderType stri
 
 }
 
-func BuildStopLoss() {
-	return
+func (t *LiveTrader) BuildStopLoss(client *binance_connector.Client, price float64) error {
+	order, err := t.BuildOrder(client, "STOPLOSS")
+	if err != nil {
+		return err
+	}
+	orderResp, err := t.ParseResponse(order)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(orderResp) // test
+	return err
 }
 
 // store trade id from api

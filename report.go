@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 )
 
 func ReadReport(interval Interval) ([]StrategyResult, error) {
@@ -13,7 +14,8 @@ func ReadReport(interval Interval) ([]StrategyResult, error) {
 
 	fileName := fmt.Sprintf("report_%s.json", string(interval))
 
-	file, err := os.Open(fileName)
+	path := path.Join("data", fileName)
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 
@@ -31,20 +33,10 @@ func ReadReport(interval Interval) ([]StrategyResult, error) {
 	return results, nil
 }
 
-func SaveJsonResult(filename string, results []StrategyResult) {
-	finalBytes, err := json.Marshal(results)
-	if err != nil {
-		fmt.Println(err)
-	}
-	err = os.WriteFile(filename, finalBytes, 0644)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-}
-
 func AppendToReport(pair string, results []StrategyResult, interval Interval) error {
-	path := fmt.Sprintf("report_%s.json", interval)
+
+	fileName := fmt.Sprintf("report_%s.json", interval)
+	path := path.Join("data", fileName)
 	file, err := os.Open(path)
 	if err != nil {
 		return err
@@ -74,6 +66,44 @@ func AppendToReport(pair string, results []StrategyResult, interval Interval) er
 		return fmt.Errorf("wait %v second for old period to be over", diff)
 	}
 	oldResult = append(oldResult, results...)
+	file.Close()
+	bytes, err = json.Marshal(oldResult)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path, bytes, 0644)
+	return err
+}
+
+func AppendToHistory(trades []LiveTrader, interval Interval) error {
+	fileName := fmt.Sprintf("history_%s.json", interval)
+	path := path.Join("data", fileName)
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		return err
+	}
+	var oldResult []LiveTrader
+	err = json.Unmarshal(bytes, &oldResult)
+	if err != nil {
+		return err
+	}
+
+	if len(oldResult) <= 0 {
+		bytes, err = json.Marshal(trades)
+		if err != nil {
+			return err
+		}
+		err = os.WriteFile(path, bytes, 0644)
+		return err
+	}
+	fmt.Println(oldResult)
+
+	oldResult = append(oldResult, trades...)
 	file.Close()
 	bytes, err = json.Marshal(oldResult)
 	if err != nil {

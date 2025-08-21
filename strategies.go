@@ -47,7 +47,16 @@ func (s *Strategy) SetupParams() IndicatorsParams {
 	}
 }
 
+func OverSuperLong(kline *Klines, i int) bool {
+	f_close, err := strconv.ParseFloat(kline.Array[i].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return f_close > kline.Indicators[SMA_super_long][i]
+}
+
 func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
+
 	// setup klines
 	params := s.SetupParams()
 	klines := IndicatorstoKlines(
@@ -60,10 +69,13 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 	closedTrade := []BackTestTrader{}
 	var prev bool
 	t := InitBackTestTrader(s.Asset, s.Amount, klines[0])
-
 	for i := 0; i < len(klines[0].Indicators[SMA_super_long])-1; i++ {
-		curr, _ := t.Loop(klines[0], &prev, i)
+		curr, err := t.Loop(klines[0], &prev, i)
+		if err != nil {
+			fmt.Println(err)
+		}
 		prev = curr
+
 		if t.TradeOver {
 			closedTrade = append(closedTrade, *t)
 			t = InitBackTestTrader(s.Asset, s.Amount, klines[0])
@@ -79,13 +91,12 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 		prev_ratio = ratio
 
 	}
-	fmt.Println(len(closedTrade))
 	result.Ratio = ratio
 	result.Params = s.Main.Params
 	return result
 }
 
-func (s *Strategy) Run(client *binance_connector.Client) ([]LiveTrader, error) {
+func (s *Strategy) Run(client *binance_connector.Client) error {
 
 	// setup
 	params := s.SetupParams()
@@ -96,16 +107,28 @@ func (s *Strategy) Run(client *binance_connector.Client) ([]LiveTrader, error) {
 	prev := false
 	for len(tradeOver) < 10 {
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
-		curr, _ := t.Loop(klines[0], &prev, len(klines[0].Array)-1)
+
+		// curr is true is long period is over small
+		curr, err := t.Loop(klines[0], &prev, len(klines[0].Array)-1)
+		if err != nil {
+			fmt.Println(err)
+		}
+
 		prev = curr
 		if t.TradeOver {
 			tradeOver = append(tradeOver, *t)
+			PrintUSDCBalance(client)
 			t = InitLiveTrader(s.Asset, s.Amount, client)
 		}
-		time.Sleep(IntervalToTime(s.Intervals[0]))
+		duration, err := IntervalToTime(s.Intervals[0])
+		if err != nil {
+			return err
+		}
+		time.Sleep(duration)
 	}
 
-	return tradeOver, nil
+	AppendToHistory(tradeOver, s.Intervals[0])
+	return nil
 }
 
 // decomposer fonction
@@ -120,4 +143,12 @@ func GetAssetBalance(client *binance_connector.Client, asset string) (float64, e
 		}
 	}
 	return 0, err
+}
+
+func PrintUSDCBalance(client *binance_connector.Client) {
+	usdc, err := GetAssetBalance(client, "USDC")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("USDC: %f \n", usdc)
 }

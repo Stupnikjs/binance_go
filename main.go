@@ -10,9 +10,9 @@ import (
 )
 
 var testStrat Strategy = Strategy{
-	Asset:     "ETHUSDC",
+	Asset:     "HBARUSDC",
 	Amount:    0.002,
-	Intervals: []Interval{m1, m5, m15, m30, h1},
+	Intervals: []Interval{m5, m15, m30, h1},
 	Main: Signal{
 		Name:   "EMA",
 		Type:   "Moving Average",
@@ -38,22 +38,12 @@ func main() {
 	testStrat.Main.Params[SMA_long] = 15
 	testStrat.Main.Params[SMA_super_long] = 200
 
-	t, err := testStrat.Run(client)
-	if err != nil {
-		fmt.Println(err)
-	}
+	r := testStrat.Test(client)
 
-	_ = t
+	fmt.Println(r)
 
-	// Get API credentials from environment variables
-	/*
-		err = FetchReports(client, []Interval{m5, m15, m30, h1})
-		if err != nil {
-			fmt.Println(err)
-		}
+	// Get API credentials from environment variable
 
-		GiveReportData(m5)
-	*/
 }
 
 // creer des commandes pour backtester

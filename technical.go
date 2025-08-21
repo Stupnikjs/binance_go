@@ -41,17 +41,10 @@ const (
 	h4  Interval = "4h"
 )
 
-func IntervalToTime(interval Interval) time.Duration {
-
-	timestring := string(interval)
-	lastletter := timestring[len(timestring)-1]
-	if lastletter == 'm' {
-		if len(timestring) == 3 {
-			intString, _ := strconv.ParseInt(timestring[:2], 10, 2)
-			return time.Duration(intString) * time.Minute
-
-		}
-	}
+func IntervalToTime(interval Interval) (time.Duration, error) {
+	// The time.ParseDuration function can handle strings like "10m", "1h", "1m30s".
+	// It returns a duration and an error.
+	return time.ParseDuration(string(interval))
 }
 
 var Interv = []Interval{m1, m5, m15, m30, h1, h2, h4}
