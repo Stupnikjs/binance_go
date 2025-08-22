@@ -51,7 +51,7 @@ func Test(client *binance_connector.Client) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(TimeStampToDateString(r.EndStamp))
+	r.SaveTradeResult(testStrat.Intervals[0])
 }
 
 func Run(client *binance_connector.Client) {
