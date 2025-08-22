@@ -119,7 +119,7 @@ func (s *Wrapper) Run(client *binance_connector.Client) (*Result, error) {
 	params, result, t, strat := s.RunSetup(client)
 	prev := false
 	loop := t.LoopBuilder(strat)
-	for len(tradeOver) < 10 {
+	for len(tradeOver) < 6 {
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
 
 		// curr is true is long period is over small

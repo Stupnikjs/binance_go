@@ -47,8 +47,11 @@ func Test(client *binance_connector.Client) {
 	testStrat.Main.Params[SMA_short] = 9
 	testStrat.Main.Params[SMA_long] = 15
 	testStrat.Main.Params[SMA_super_long] = 200
-	r, _ := testStrat.Test(client)
-	fmt.Println(r)
+	r, err := testStrat.Run(client)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(TimeStampToDateString(r.EndStamp))
 }
 
 func Run(client *binance_connector.Client) {

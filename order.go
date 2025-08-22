@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
@@ -72,3 +73,16 @@ func (t *LiveTrader) BuildStopLoss(client *binance_connector.Client, price float
 }
 
 // store trade id from api
+func TimeStampToDateString(stamp int) string {
+	ts1 := int64(stamp)
+
+	// Convert milliseconds to seconds and nanoseconds
+	// The time.Unix() function takes seconds and nanoseconds
+	seconds1 := ts1 / 1000
+	nanoseconds1 := (ts1 % 1000) * 1000000
+
+	// Create time.Time objects
+	t1 := time.Unix(seconds1, nanoseconds1)
+	return t1.Local().String()
+
+}
