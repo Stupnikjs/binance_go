@@ -58,24 +58,36 @@ func (t *BackTestTrader) Sell() error {
 	return nil
 }
 
-func (b *BackTestTrader) Loop(klines *Klines, prevOver *bool, i int) (bool, error) {
-	b.Klines = klines
-	b.Index += 1
+func (b *BackTestTrader) LoopBuilder(s Strategy) func(klines *Klines, prevOver *bool, i int) (bool, error) {
+	return func(klines *Klines, prevOver *bool, i int) (bool, error) {
+		b.Klines = klines
+		b.Index += 1
 
-	closeOverMAsuperLong := OverSuperLong(klines, i)
-	bigOverSmall := klines.Indicators[EMA_short][i] < klines.Indicators[EMA_long][i]
+		closeOverMAsuperLong := OverSuperLong(klines, i)
+		bigOverSmall := klines.Indicators[EMA_short][i] < klines.Indicators[EMA_long][i]
 
-	if !bigOverSmall && *prevOver && closeOverMAsuperLong && b.Buy_time == 0 {
-		if err := b.Buy(); err != nil {
-			return false, err
+		if !bigOverSmall && *prevOver && closeOverMAsuperLong && b.Buy_time == 0 {
+			if err := b.Buy(); err != nil {
+				return false, err
+			}
 		}
-	}
-	if bigOverSmall && !*prevOver && b.Buy_time != 0 && b.Sell_time == 0 {
-		if err := b.Sell(); err != nil {
-			return false, err
-		}
+		if bigOverSmall && !*prevOver && b.Buy_time != 0 && b.Sell_time == 0 {
+			if err := b.Sell(); err != nil {
+				return false, err
+			}
 
+		}
+		// its not sell signal
+		return bigOverSmall, nil
 	}
-	// its not sell signal
-	return bigOverSmall, nil
+}
+
+func (b *BackTestTrader) SetStop(price float64) error {
+	return nil
+}
+func (b *BackTestTrader) GetGain() (float64, error) {
+	if !b.TradeOver {
+		return 0, fmt.Errorf("trade still in progress %v ", b)
+	}
+	return b.Sell_price*b.Amount - b.Buy_price*b.Amount, nil
 }

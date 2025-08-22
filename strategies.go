@@ -9,7 +9,7 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-type Strategy struct {
+type Wrapper struct {
 	Asset     string
 	Amount    float64
 	Intervals []Interval // first interval is the main interval where we want to trade market
@@ -22,7 +22,7 @@ type Signal struct {
 	Params map[Indicator]int
 }
 
-type StrategyResult struct {
+type Result struct {
 	Pair       string
 	StartStamp int
 	EndStamp   int
@@ -30,15 +30,22 @@ type StrategyResult struct {
 	Params     map[Indicator]int
 }
 
-func (s *Strategy) InitResult(pair string, klines []*binance_connector.KlinesResponse) StrategyResult {
-	result := StrategyResult{}
+func (s *Wrapper) InitResult(pair string, klines []*binance_connector.KlinesResponse) Result {
+	result := Result{}
 	result.StartStamp = int(klines[0].CloseTime)
 	result.EndStamp = int(klines[len(klines)-1].CloseTime)
 	result.Pair = pair
 	return result
 }
 
-func (s *Strategy) SetupParams() IndicatorsParams {
+func (r *Result) GetRatioLive(trades []*LiveTrader) {
+	r.Ratio = 1
+	for _, t := range trades {
+		r.Ratio = (t.Sell_price / t.Buy_price) * r.Ratio
+	}
+}
+
+func (s *Wrapper) SetupParams() IndicatorsParams {
 	return IndicatorsParams{
 		short_period_MA: s.Main.Params[SMA_short],
 		long_period_MA:  s.Main.Params[SMA_long],
@@ -55,7 +62,7 @@ func OverSuperLong(kline *Klines, i int) bool {
 	return f_close > kline.Indicators[SMA_super_long][i]
 }
 
-func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
+func (s *Wrapper) Test(client *binance_connector.Client) (*Result, error) {
 
 	// setup klines
 	params := s.SetupParams()
@@ -69,10 +76,12 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 	closedTrade := []BackTestTrader{}
 	var prev bool
 	t := InitBackTestTrader(s.Asset, s.Amount, klines[0])
+	strat := Strategy{}
+	loop := t.LoopBuilder(strat)
 	for i := 0; i < len(klines[0].Indicators[SMA_super_long])-1; i++ {
-		curr, err := t.Loop(klines[0], &prev, i)
+		curr, err := loop(klines[0], &prev, i)
 		if err != nil {
-			fmt.Println(err)
+			return nil, err
 		}
 		prev = curr
 
@@ -83,52 +92,56 @@ func (s *Strategy) Test(client *binance_connector.Client) StrategyResult {
 		}
 
 	}
-
-	prev_ratio := 1.0
-	ratio := 1.0
 	for _, t := range closedTrade {
-		ratio = (t.Sell_price / t.Buy_price) * prev_ratio
-		prev_ratio = ratio
-
+		fmt.Println(t.Buy_price, t.Sell_price)
 	}
-	result.Ratio = ratio
-	result.Params = s.Main.Params
-	return result
+	return &result, nil
 }
 
-func (s *Strategy) Run(client *binance_connector.Client) error {
-
-	// setup
+func (s *Wrapper) RunSetup(client *binance_connector.Client) (IndicatorsParams, Result, *LiveTrader, Strategy) {
+	fmt.Println("-- STARTING -- ")
 	params := s.SetupParams()
-	tradeOver := []LiveTrader{}
-	result := StrategyResult{}
+	result := Result{}
 	result.Ratio = 1
 	t := InitLiveTrader(s.Asset, s.Amount, client)
+	strat := Strategy{
+		Type:   "Cross Over EMA",
+		Params: params,
+	}
+	return params, result, t, strat
+}
+
+func (s *Wrapper) Run(client *binance_connector.Client) (*Result, error) {
+
+	// setup
+	tradeOver := []*LiveTrader{}
+	PrintUSDCBalance(client)
+	params, result, t, strat := s.RunSetup(client)
 	prev := false
+	loop := t.LoopBuilder(strat)
 	for len(tradeOver) < 10 {
 		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
 
 		// curr is true is long period is over small
-		curr, err := t.Loop(klines[0], &prev, len(klines[0].Array)-1)
+		curr, err := loop(klines[0], &prev, len(klines[0].Array)-1)
 		if err != nil {
-			fmt.Println(err)
+			return nil, err
 		}
 
 		prev = curr
 		if t.TradeOver {
-			tradeOver = append(tradeOver, *t)
+			tradeOver = append(tradeOver, t)
 			PrintUSDCBalance(client)
 			t = InitLiveTrader(s.Asset, s.Amount, client)
 		}
 		duration, err := IntervalToTime(s.Intervals[0])
 		if err != nil {
-			return err
+			return nil, err
 		}
 		time.Sleep(duration)
 	}
-
-	AppendToHistory(tradeOver, s.Intervals[0])
-	return nil
+	result.GetRatioLive(tradeOver)
+	return &result, nil
 }
 
 // decomposer fonction

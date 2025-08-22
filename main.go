@@ -23,7 +23,7 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
 
-	Run(client)
+	Test(client)
 
 	// Get API credentials from environment variable
 
@@ -33,7 +33,7 @@ func main() {
 
 func Test(client *binance_connector.Client) {
 
-	var testStrat Strategy = Strategy{
+	var testStrat Wrapper = Wrapper{
 		Asset:     "ETHUSDC",
 		Amount:    0.002,
 		Intervals: []Interval{m5, m15, m30, h1},
@@ -47,15 +47,15 @@ func Test(client *binance_connector.Client) {
 	testStrat.Main.Params[SMA_short] = 9
 	testStrat.Main.Params[SMA_long] = 15
 	testStrat.Main.Params[SMA_super_long] = 200
-	r := testStrat.Test(client)
+	r, _ := testStrat.Test(client)
 	fmt.Println(r)
 }
 
 func Run(client *binance_connector.Client) {
-	var testStrat Strategy = Strategy{
+	var testStrat Wrapper = Wrapper{
 		Asset:     "ETHUSDC",
 		Amount:    0.002,
-		Intervals: []Interval{m1, m5, m15, m30, h1},
+		Intervals: []Interval{m5, m15, m30, h1},
 		Main: Signal{
 			Name:   "EMA",
 			Type:   "Moving Average",
@@ -67,7 +67,11 @@ func Run(client *binance_connector.Client) {
 	testStrat.Main.Params[SMA_long] = 15
 	testStrat.Main.Params[SMA_super_long] = 200
 
-	err := testStrat.Run(client)
+	r, err := testStrat.Test(client)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = r.SaveTradeResult(testStrat.Intervals[0])
 	if err != nil {
 		fmt.Println(err)
 	}

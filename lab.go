@@ -26,18 +26,6 @@ var PAIRS = []string{
 * and test best params
 * then append to report
  */
-func FetchReports(client *binance_connector.Client, intervals []Interval) error {
-
-	for _, r := range PAIRS {
-		result := ParralelTest(client, r, intervals)
-		err := AppendToReport(r, result, intervals[0])
-		if err != nil {
-			return err
-		}
-
-	}
-	return nil
-}
 
 func ConvertUSDCtoPAIR(client *binance_connector.Client, USDCamount float64, pair string) float64 {
 	klines := BuildKlinesArr(client, pair, []Interval{m1})
@@ -52,10 +40,10 @@ func ConvertUSDCtoPAIR(client *binance_connector.Client, USDCamount float64, pai
 * create strategy with some for loop generated parameters
 * then test it
  */
-func ParralelTest(client *binance_connector.Client, pair string, interval []Interval) []StrategyResult {
-	var allResult []StrategyResult
+func ParralelTest(client *binance_connector.Client, pair string, interval []Interval) []Result {
+	var allResult []Result
 	var wg sync.WaitGroup
-	resultsChan := make(chan StrategyResult, 32*16) // Buffered channel
+	resultsChan := make(chan Result, 32*16) // Buffered channel
 
 	// Step 1: Launch a collector goroutine
 
@@ -71,7 +59,7 @@ func ParralelTest(client *binance_connector.Client, pair string, interval []Inte
 
 			// Create copies of the strategies for each goroutine
 			amount := ConvertUSDCtoPAIR(client, 30, pair)
-			s := Strategy{
+			s := Wrapper{
 				Asset:     pair,
 				Amount:    amount,
 				Intervals: interval,
@@ -85,9 +73,9 @@ func ParralelTest(client *binance_connector.Client, pair string, interval []Inte
 			s.Main.Params[SMA_long] = 43
 			s.Main.Params[SMA_super_long] = 200
 
-			r := s.Test(client)
+			r, _ := s.Test(client)
 
-			resultsChan <- r // Send result to the channel
+			resultsChan <- *r // Send result to the channel
 
 		}(pair) // Pass i and j as arguments to the goroutine
 
@@ -106,17 +94,4 @@ func ParralelTest(client *binance_connector.Client, pair string, interval []Inte
 
 	return allResult
 
-}
-
-func GiveReportData(interval Interval) {
-	results, err := ReadReport(interval)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	sum_avg_ratio := 0.0
-	for _, r := range results {
-		sum_avg_ratio += r.Ratio
-	}
-	fmt.Printf("avg ratio from report %f", sum_avg_ratio/float64(len(results)))
 }

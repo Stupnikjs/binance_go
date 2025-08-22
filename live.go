@@ -85,35 +85,37 @@ func (t *LiveTrader) Sell() error {
 	return nil
 }
 
-func (t *LiveTrader) Loop(klines *Klines, prevOver *bool, i int) (bool, error) {
-	fmt.Print("-")
-	// Your CrossOver logic, adapted for the LiveTrader struct.
-	closeOverMAsuperLong := OverSuperLong(klines, i)
+func (t *LiveTrader) LoopBuilder(s Strategy) func(klines *Klines, prevOver *bool, i int) (bool, error) {
+	return func(klines *Klines, prevOver *bool, i int) (bool, error) {
+		fmt.Print("-")
+		// Your CrossOver logic, adapted for the LiveTrader struct.
+		closeOverMAsuperLong := OverSuperLong(klines, i)
 
-	bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
-	f_close, err := strconv.ParseFloat(klines.Array[i-1].Close, 64)
-	if err != nil {
-		return false, err
-	}
-	if t.StopPrice >= f_close {
-		t.TradeOver = true
-
-		return bigOverSmall, nil
-	}
-	if !bigOverSmall && *prevOver && closeOverMAsuperLong {
-		if err := t.Buy(); err != nil {
-
-			err = t.SetStop(f_close)
+		bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
+		f_close, err := strconv.ParseFloat(klines.Array[i-1].Close, 64)
+		if err != nil {
 			return false, err
 		}
+		if t.StopPrice >= f_close {
+			t.TradeOver = true
 
-	}
-	if bigOverSmall && !*prevOver && t.Buy_time != 0 {
-		if err := t.Sell(); err != nil {
-			return true, err
+			return bigOverSmall, nil
 		}
+		if !bigOverSmall && *prevOver && closeOverMAsuperLong {
+			if err := t.Buy(); err != nil {
+
+				err = t.SetStop(f_close)
+				return false, err
+			}
+
+		}
+		if bigOverSmall && !*prevOver && t.Buy_time != 0 {
+			if err := t.Sell(); err != nil {
+				return true, err
+			}
+		}
+		return bigOverSmall, nil
 	}
-	return bigOverSmall, nil
 }
 
 func (t *LiveTrader) SetStop(price float64) error {
