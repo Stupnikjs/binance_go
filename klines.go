@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
+	"github.com/Stupnikjs/binance_go/analysis"
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
@@ -97,6 +97,19 @@ func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	return closingPrices
 }
 
+func VolumeFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
+	volumes := make([]float64, len(klines))
+	for i, kline := range klines {
+		f_vol, err := strconv.ParseFloat(kline.Volume, 64)
+		if err != nil {
+			fmt.Println(err)
+		}
+		volumes[i] = f_vol
+
+	}
+	return volumes
+}
+
 // error checking
 func IndicatorstoKlines(client *binance_connector.Client, pair string, intervals []Interval, params IndicatorsParams) []*Klines {
 	klinesArr := BuildKlinesArr(client, pair, intervals)
@@ -108,13 +121,13 @@ func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Kline
 	for _, k := range klines {
 		// caclulate RSI EMA SMA
 		close := CloseFromKlines(k.Array)
-		RSI_arr := RSIcalc(close, params.RSI_coef)
-		SMA_short_arr := SMAcalc(close, params.short_period_MA)
-		SMA_long_arr := SMAcalc(close, params.long_period_MA)
-		EMA_short_arr := EMAcalc(close, params.short_period_MA)
-		EMA_long_arr := EMAcalc(close, params.long_period_MA)
-		SMA_super_long_arr := SMAcalc(close, params.super_long_MA)
-		EMA_super_long_arr := EMAcalc(close, params.super_long_MA)
+		RSI_arr := analysis.RSIcalc(close, params.RSI_coef)
+		SMA_short_arr := analysis.SMAcalc(close, params.short_period_MA)
+		SMA_long_arr := analysis.SMAcalc(close, params.long_period_MA)
+		EMA_short_arr := analysis.EMAcalc(close, params.short_period_MA)
+		EMA_long_arr := analysis.EMAcalc(close, params.long_period_MA)
+		SMA_super_long_arr := analysis.SMAcalc(close, params.super_long_MA)
+		EMA_super_long_arr := analysis.EMAcalc(close, params.super_long_MA)
 
 		// return sliced array of same length
 		offset := params.super_long_MA
@@ -128,11 +141,18 @@ func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Kline
 		k.Indicators[EMA_super_long] = EMA_super_long_arr
 
 	}
+
+	MeltRSIKline(klines[0], klines[3])
 	return klines
 }
 
+// origin must be klines from upper interval
 func MeltRSIKline(receiver *Klines, origin *Klines) error {
-	RSI_origin := origin.Indicators[RSI]
+	originRSI := origin.Indicators[RSI]
+	if len(originRSI) == 0 {
+		return fmt.Errorf("origin RSI indicator is empty or not calculated")
+	}
+
 	var targetIndicator Indicator
 	// switch on Intervals
 	switch origin.Interval {
@@ -149,114 +169,30 @@ func MeltRSIKline(receiver *Klines, origin *Klines) error {
 	default:
 		return fmt.Errorf("no indicator valid found")
 	}
-	n := 0
+
+	// Initialize the slice to the correct size
+	receiver.Indicators[targetIndicator] = make([]float64, len(receiver.Array))
+
+	originIndex := 0
+	// Find the first corresponding origin candle
 	for i := range origin.Array {
-		curr := origin.Array[n]
-		if receiver.Array[i].CloseTime < curr.CloseTime {
-			receiver.Indicators[targetIndicator][i] = RSI_origin[i]
+		if receiver.Array[0].OpenTime >= origin.Array[i].OpenTime {
+			originIndex = i
+		}
+	}
+
+	// Iterate over the receiver array (the lower interval)
+	for i := range receiver.Array {
+		// Advance the originIndex to find the correct high-interval candle.
+		for originIndex+1 < len(origin.Array) && receiver.Array[i].CloseTime >= origin.Array[originIndex+1].CloseTime {
+			originIndex++
 		}
 
+		// Assign the RSI value from the correctly identified origin candle
+		receiver.Indicators[targetIndicator][i] = originRSI[originIndex]
 	}
+
 	return nil
 }
 
 /*      Indicator Calculation       */
-
-func SMAcalc(closingPrices []float64, period int) []float64 {
-	var SMA []float64
-	closingPriceSlice := closingPrices
-	if len(closingPrices) < period {
-		return SMA
-	}
-	for i := period - 1; i < len(closingPriceSlice); i++ {
-		var sma float64
-		slice := closingPriceSlice[i-period+1 : i+1]
-		for _, n := range slice {
-			sma += n
-
-		}
-		SMA = append(SMA, sma/float64(period))
-
-	}
-	return SMA
-}
-
-func RSIcalc(prices []float64, period int) []float64 {
-	// Le RSI ne peut pas être calculé si le nombre de prix est inférieur à la période.
-	if len(prices) <= period {
-		return nil
-	}
-
-	// Initialiser les slices pour les gains, les pertes et le RSI
-	gains := make([]float64, len(prices))
-	losses := make([]float64, len(prices))
-	rsi := make([]float64, len(prices))
-
-	// Étape 1 & 2 : Calculer les changements de prix, les gains et les pertes
-	for i := 1; i < len(prices); i++ {
-		change := prices[i] - prices[i-1]
-		if change > 0 {
-			gains[i] = change
-			losses[i] = 0
-		} else {
-			gains[i] = 0
-			losses[i] = math.Abs(change)
-		}
-	}
-
-	// Étape 3 : Calculer la première moyenne de gain et de perte (moyenne simple)
-	var avgGain float64
-	var avgLoss float64
-	for i := 1; i <= period; i++ {
-		avgGain += gains[i]
-		avgLoss += losses[i]
-	}
-	avgGain /= float64(period)
-	avgLoss /= float64(period)
-
-	// Étape 4 : Calculer le premier RS et le premier RSIcalc
-	// Le premier RSIcalc est stocké à l'index `period`
-	if avgLoss == 0 {
-		rsi[period] = 100 // Pour éviter la division par zéro
-	} else {
-		rs := avgGain / avgLoss
-		rsi[period] = 100 - (100 / (1 + rs))
-	}
-
-	// Étape 5 : Calculer les RSIcalc suivants avec la méthode de lissage
-	for i := period + 1; i < len(prices); i++ {
-		avgGain = ((avgGain * float64(period-1)) + gains[i]) / float64(period)
-		avgLoss = ((avgLoss * float64(period-1)) + losses[i]) / float64(period)
-
-		if avgLoss == 0 {
-			rsi[i] = 100
-		} else {
-			rs := avgGain / avgLoss
-			rsi[i] = 100 - (100 / (1 + rs))
-		}
-	}
-
-	// Les premières (période) valeurs sont 0, on pourrait retourner une slice plus courte si désiré
-	return rsi
-}
-
-func EMAcalc(closingPrices []float64, period int) []float64 {
-
-	if len(closingPrices) <= period {
-		return SMAcalc(closingPrices, period)
-	}
-
-	firstSMA := SMAcalc(closingPrices, period)[0]
-	EMA := []float64{}
-
-	EMA = append(EMA, firstSMA)
-	EMAcoef := 2.0 / float64(period+1)
-	prevEMA := firstSMA
-	for i := period; i < len(closingPrices); i++ {
-		nextEMA := closingPrices[i]*float64(EMAcoef) + prevEMA*(1-EMAcoef)
-		prevEMA = nextEMA
-		EMA = append(EMA, nextEMA)
-
-	}
-	return EMA
-}

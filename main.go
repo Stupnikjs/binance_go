@@ -49,6 +49,7 @@ func Test(client *binance_connector.Client) {
 	testStrat.Main.Params[SMA_short] = 9
 	testStrat.Main.Params[SMA_long] = 15
 	testStrat.Main.Params[SMA_super_long] = 200
+	testStrat.Main.Params[RSI] = 14
 	r, err := testStrat.Run(client)
 	if err != nil {
 		fmt.Println(err)
@@ -71,6 +72,7 @@ func Run(client *binance_connector.Client) error {
 	testStrat.Main.Params[SMA_short] = 9
 	testStrat.Main.Params[SMA_long] = 15
 	testStrat.Main.Params[SMA_super_long] = 200
+	testStrat.Main.Params[RSI] = 14
 
 	r, err := testStrat.Run(client)
 	if err != nil {
