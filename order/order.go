@@ -1,9 +1,10 @@
-package main
+package order
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	binance_connector "github.com/binance/binance-connector-go"
@@ -32,7 +33,7 @@ type Fill struct {
 	CommissionAsset string `json:"commissionAsset"`
 }
 
-func (t *LiveTrader) ParseResponse(response interface{}) (*CreateOrderResponse, error) {
+func ParseResponse(response interface{}) (*CreateOrderResponse, error) {
 	var orderResponse CreateOrderResponse
 	jsonBytes, err := json.Marshal(response)
 	if err != nil {
@@ -48,22 +49,21 @@ func (t *LiveTrader) ParseResponse(response interface{}) (*CreateOrderResponse, 
 	return &orderResponse, nil
 }
 
-func (t *LiveTrader) BuildOrder(client *binance_connector.Client, orderType string) (interface{}, error) {
+func BuildOrder(client *binance_connector.Client, orderType string, pair string, amount float64) (interface{}, error) {
 	return client.NewCreateOrderService().
-		Symbol(t.Asset).
+		Symbol(pair).
 		Side(orderType).
 		Type("MARKET").
-		Quantity(t.Amount).
+		Quantity(amount).
 		Do(context.Background())
 
 }
-
-func (t *LiveTrader) BuildStopLoss(client *binance_connector.Client, price float64) error {
-	order, err := t.BuildOrder(client, "STOPLOSS")
+func BuildStopLoss(client *binance_connector.Client, price float64, pair string, amount float64) error {
+	order, err := BuildOrder(client, "STOPLOSS", pair, amount)
 	if err != nil {
 		return err
 	}
-	orderResp, err := t.ParseResponse(order)
+	orderResp, err := ParseResponse(order)
 	if err != nil {
 		return err
 	}
@@ -85,4 +85,24 @@ func TimeStampToDateString(stamp int) string {
 	t1 := time.Unix(seconds1, nanoseconds1)
 	return t1.Local().String()
 
+}
+
+func GetAssetBalance(client *binance_connector.Client, asset string) (float64, error) {
+
+	account, err := client.NewGetAccountService().Do(context.Background())
+	for i := range account.Balances {
+		if asset == account.Balances[i].Asset {
+			amount, err := strconv.ParseFloat(account.Balances[i].Free, 64)
+			return amount, err
+		}
+	}
+	return 0, err
+}
+
+func PrintUSDCBalance(client *binance_connector.Client) {
+	usdc, err := GetAssetBalance(client, "USDC")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("USDC: %f \n", usdc)
 }

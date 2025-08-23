@@ -1,5 +1,9 @@
 package main
 
+var PAIRS = []string{
+	"BTCUSDC", "ETHUSDC", "LINKUSDC",
+}
+
 type ITTrader interface {
 	Buy() error
 	Sell() error
@@ -8,8 +12,4 @@ type ITTrader interface {
 	IsTradeOver() bool
 	GetGain() (error, float64)
 	SetStop() error
-}
-type Strategy struct {
-	Type   string
-	Params IndicatorsParams
 }

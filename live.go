@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Stupnikjs/binance_go/order"
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
@@ -24,11 +25,11 @@ type LiveTrader struct {
 }
 
 func (t *LiveTrader) Buy() error {
-	response, err := t.BuildOrder(t.Client, "BUY")
+	response, err := order.BuildOrder(t.Client, "BUY", t.Asset, t.Amount)
 	if err != nil {
 		return err
 	}
-	orderResponse, err := t.ParseResponse(response)
+	orderResponse, err := order.ParseResponse(response)
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (t *LiveTrader) Sell() error {
 			return err
 		}
 		// extract response to a struct
-		var orderResponse CreateOrderResponse
+		var orderResponse order.CreateOrderResponse
 		jsonBytes, err := json.Marshal(response)
 		if err != nil {
 			return err
@@ -84,24 +85,24 @@ func (t *LiveTrader) Sell() error {
 }
 
 func (t *LiveTrader) LoopBuilder(s Strategy) func(klines *Klines, prevOver *bool, i int) (bool, error) {
-
-	// based on strategy modify
 	return func(klines *Klines, prevOver *bool, i int) (bool, error) {
-		bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
-		fmt.Printf("time: %s rsi_1h %f  sma short : %f sma long: %f \n", TimeStampToDateString(int(klines.Array[i].CloseTime)), klines.Indicators[RSI_1h][i], klines.Indicators[SMA_short][i], klines.Indicators[SMA_long][i])
+		// refactor
+		// had volumes condition
+		bigOverSmall := klines.EMAShortOverLong(i)
+		fmt.Printf("time: %s rsi_1h %f  sma short : %f sma long: %f \n", order.TimeStampToDateString(int(klines.Array[i].CloseTime)), klines.Indicators[RSI_1h][i], klines.Indicators[SMA_short][i], klines.Indicators[SMA_long][i])
 		f_close, err := strconv.ParseFloat(klines.Array[i-1].Close, 64)
 		if err != nil {
 			return false, err
 		}
 		if t.StopPrice >= f_close {
 			t.TradeOver = true
-			fmt.Printf("trade closed %s %f \n", TimeStampToDateString(int(t.Sell_time)), t.Sell_price)
+			fmt.Printf("trade closed %s %f \n", order.TimeStampToDateString(int(t.Sell_time)), t.Sell_price)
 			return bigOverSmall, nil
 		}
 		if !bigOverSmall && *prevOver {
 
 			if err := t.Buy(); err != nil {
-				fmt.Printf("trade open %s %f \n", TimeStampToDateString(int(t.Buy_time)), t.Buy_price)
+				fmt.Printf("trade open %s %f \n", order.TimeStampToDateString(int(t.Buy_time)), t.Buy_price)
 				err = t.SetStop(f_close)
 				return false, err
 			}
@@ -118,7 +119,7 @@ func (t *LiveTrader) LoopBuilder(s Strategy) func(klines *Klines, prevOver *bool
 
 func (t *LiveTrader) SetStop(price float64) error {
 	t.StopPrice = price
-	return t.BuildStopLoss(t.Client, price)
+	return order.BuildStopLoss(t.Client, price, t.Asset, t.Amount)
 
 }
 

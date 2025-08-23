@@ -4,22 +4,17 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
+	"sync"
 
+	"github.com/Stupnikjs/binance_go/order"
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-type Wrapper struct {
-	Asset     string
-	Amount    float64
-	Intervals []Interval // first interval is the main interval where we want to trade market
-	Main      Signal
-}
-
-type Signal struct {
-	Name   string
-	Type   string
-	Params map[Indicator]int
+type Strategy struct {
+	USDCAmount float64
+	Type       string
+	Params     IndicatorsParams
+	Intervals  []Interval
 }
 
 type Result struct {
@@ -27,10 +22,19 @@ type Result struct {
 	StartStamp int
 	EndStamp   int
 	Ratio      float64
-	Params     map[Indicator]int
+	Params     IndicatorsParams
 }
 
-func (s *Wrapper) InitResult(pair string, klines []*binance_connector.KlinesResponse) Result {
+var PARAMS = IndicatorsParams{
+
+	short_period_MA: 9,
+	long_period_MA:  21,
+	super_long_MA:   200,
+	RSI_coef:        14,
+	VROC_coef:       15,
+}
+
+func InitResult(pair string, klines []*binance_connector.KlinesResponse) Result {
 	result := Result{}
 	result.StartStamp = int(klines[0].CloseTime)
 	result.EndStamp = int(klines[len(klines)-1].CloseTime)
@@ -45,15 +49,6 @@ func (r *Result) GetRatioLive(trades []*LiveTrader) {
 	}
 }
 
-func (s *Wrapper) SetupParams() IndicatorsParams {
-	return IndicatorsParams{
-		short_period_MA: s.Main.Params[SMA_short],
-		long_period_MA:  s.Main.Params[SMA_long],
-		super_long_MA:   s.Main.Params[SMA_super_long],
-		RSI_coef:        s.Main.Params[RSI],
-	}
-}
-
 func OverSuperLong(kline *Klines, i int) bool {
 	f_close, err := strconv.ParseFloat(kline.Array[i].Close, 64)
 	if err != nil {
@@ -62,107 +57,139 @@ func OverSuperLong(kline *Klines, i int) bool {
 	return f_close > kline.Indicators[SMA_super_long][i]
 }
 
-func (s *Wrapper) Test(client *binance_connector.Client) (*Result, error) {
-
-	// setup klines
-	params := s.SetupParams()
-	klines := IndicatorstoKlines(
-		client,
-		s.Asset,
-		s.Intervals,
-		params)
-
-	result := s.InitResult(s.Asset, klines[0].Array)
-	result.Params = s.Main.Params
-	closedTrade := []BackTestTrader{}
-	var prev bool
-	t := InitBackTestTrader(s.Asset, s.Amount, klines[0])
-	strat := Strategy{}
-	loop := t.LoopBuilder(strat)
-	for i := 0; i < len(klines[0].Indicators[SMA_super_long])-1; i++ {
-		curr, err := loop(klines[0], &prev, i)
-		if err != nil {
-			return nil, err
+func (s *Strategy) TestWrapper(client *binance_connector.Client) ([]Result, error) {
+	var wg sync.WaitGroup
+	resultsChan := make(chan Result, len(PAIRS)) // Buffered channel
+	var results []Result
+	wg.Add(len(PAIRS))
+	go func() {
+		for result := range resultsChan {
+			results = append(results, result)
 		}
-		prev = curr
+	}()
+	for _, p := range PAIRS {
+		go func(p string) {
+			defer wg.Done()
+			amount := ConvertUSDCtoPAIR(client, s.USDCAmount, p)
+			klines := IndicatorstoKlines(
+				client,
+				p,
+				s.Intervals,
+				PARAMS)
+			result := InitResult(p, klines[0].Array)
+			result.Params = s.Params
+			closedTrade := []BackTestTrader{}
+			var prev bool
+			t := InitBackTestTrader(p, amount, klines[0])
+			loop := t.LoopBuilder(*s)
+			for i := 0; i < len(klines[0].Indicators[SMA_super_long])-1; i++ {
+				curr, err := loop(klines[0], &prev, i)
+				if err != nil {
+					fmt.Println(err)
+				}
+				prev = curr
 
-		if t.TradeOver {
-			closedTrade = append(closedTrade, *t)
-			t = InitBackTestTrader(s.Asset, s.Amount, klines[0])
+				if t.TradeOver {
+					closedTrade = append(closedTrade, *t)
+					t = InitBackTestTrader(p, amount, klines[0])
 
-		}
+				}
+
+			}
+			result.Ratio = 1.0
+			for _, t := range closedTrade {
+				result.Ratio = t.Sell_price / t.Buy_price
+			}
+			resultsChan <- result
+		}(p)
 
 	}
-	result.Ratio = 1.0
-	for _, t := range closedTrade {
-		result.Ratio = t.Sell_price / t.Buy_price
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+	for result := range resultsChan {
+		results = append(results, result)
 	}
-	return &result, nil
+	return results, nil
 }
 
-func (s *Wrapper) RunSetup(client *binance_connector.Client) (IndicatorsParams, Result, *LiveTrader, Strategy) {
-	fmt.Println("-- STARTING -- ")
-	params := s.SetupParams()
-	result := Result{}
-	result.Ratio = 1
-	t := InitLiveTrader(s.Asset, s.Amount, client)
-	strat := Strategy{
-		Type:   "Cross Over EMA",
-		Params: params,
+func (s *Strategy) ParralelRunWrapper(ctx context.Context, client *binance_connector.Client) ([]*LiveTrader, error) {
+	var wg sync.WaitGroup
+	var mu sync.Mutex // Mutex to protect the shared slice
+
+	// Create a channel to send completed trades to the main goroutine.
+	tradesChan := make(chan *LiveTrader, len(PAIRS))
+
+	wg.Add(len(PAIRS))
+
+	for _, p := range PAIRS {
+		// Launch a new goroutine for each currency pair.
+		go func(p string) {
+			defer wg.Done()
+
+			// A true live trading loop would be more sophisticated. For this example,
+			// we'll just run the logic once. A real application would need to
+			// handle a continuous event stream (e.g., from a WebSocket).
+
+			amount := ConvertUSDCtoPAIR(client, s.USDCAmount, p)
+			order.PrintUSDCBalance(client)
+
+			// Initialize a live trader for this specific pair
+			t := InitLiveTrader(p, amount, client)
+			prev := false
+			loop := t.LoopBuilder(*s)
+			_ = prev
+			_ = loop
+			for {
+				select {
+				case <-ctx.Done():
+					// Context was canceled, so we exit the goroutine gracefully.
+					fmt.Printf("Shutting down live trading for %s\n", p)
+					return
+				default:
+					// Continue with the live trading logic
+				}
+
+				klines := IndicatorstoKlines(client, p, s.Intervals, PARAMS)
+
+				// Check for empty klines data to prevent panic
+				if len(klines) == 0 {
+					fmt.Printf("Error: No klines data for pair %s\n", p)
+					return
+				}
+
+				curr, err := loop(klines[0], &prev, len(klines[0].Array)-1)
+
+				if err != nil {
+					fmt.Printf("Error in loop for %s: %v\n", p, err)
+					return
+				}
+
+				// If the trade is over, send it to the channel.
+				if t.TradeOver {
+					tradesChan <- t
+				}
+				prev = curr
+
+			}
+
+		}(p)
 	}
-	return params, result, t, strat
-}
 
-func (s *Wrapper) Run(client *binance_connector.Client) (*Result, error) {
+	// This goroutine waits for all workers to finish and then closes the channel.
+	go func() {
+		wg.Wait()
+		close(tradesChan)
+	}()
 
-	// setup
-	tradeOver := []*LiveTrader{}
-	PrintUSDCBalance(client)
-	params, result, t, strat := s.RunSetup(client)
-	prev := false
-	loop := t.LoopBuilder(strat)
-	for len(tradeOver) < 6 {
-		klines := IndicatorstoKlines(client, s.Asset, s.Intervals, params)
-		// curr is true is long period is over small
-		curr, err := loop(klines[0], &prev, len(klines[0].Array)-1)
-		if err != nil {
-			return nil, err
-		}
-
-		prev = curr
-		if t.TradeOver {
-			tradeOver = append(tradeOver, t)
-			PrintUSDCBalance(client)
-			t = InitLiveTrader(s.Asset, s.Amount, client)
-		}
-		duration, err := IntervalToTime(s.Intervals[0])
-		if err != nil {
-			return nil, err
-		}
-		time.Sleep(duration)
+	var completedTrades []*LiveTrader
+	// Collect results from the channel until it's closed.
+	for trade := range tradesChan {
+		mu.Lock()
+		completedTrades = append(completedTrades, trade)
+		mu.Unlock()
 	}
-	result.GetRatioLive(tradeOver)
-	return &result, nil
-}
 
-// decomposer fonction
-
-func GetAssetBalance(client *binance_connector.Client, asset string) (float64, error) {
-
-	account, err := client.NewGetAccountService().Do(context.Background())
-	for i := range account.Balances {
-		if asset == account.Balances[i].Asset {
-			amount, err := strconv.ParseFloat(account.Balances[i].Free, 64)
-			return amount, err
-		}
-	}
-	return 0, err
-}
-
-func PrintUSDCBalance(client *binance_connector.Client) {
-	usdc, err := GetAssetBalance(client, "USDC")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("USDC: %f \n", usdc)
+	return completedTrades, nil
 }

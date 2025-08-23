@@ -112,6 +112,7 @@ func VROCcalc(volumes []float64, period int) []float64 {
 		return make([]float64, 0)
 	}
 
+	// as with moving average array is smaller
 	vroc := make([]float64, len(volumes)-period)
 
 	for i := period; i < len(volumes); i++ {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -22,62 +23,31 @@ func main() {
 	client := binance_connector.NewClient(apiKey, secretKey, "https://testnet.binance.vision")
 	_ = client
 
-	err = Run(client)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	testStrat := Strategy{
+		USDCAmount: 10,
+		Type:       "Cross over EMA",
+		Params: IndicatorsParams{
+			short_period_MA: 9,
+			long_period_MA:  21,
+			RSI_coef:        14,
+			VROC_coef:       15,
+		},
+		Intervals: []Interval{m5, m15, h1, h2},
+	}
+
+	r, err := testStrat.ParralelRunWrapper(context.Background(), client)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(r)
 
 	// Get API credentials from environment variable
 
 }
 
-// creer des commandes pour backtester
-
-func Test(client *binance_connector.Client) {
-
-	var testStrat Wrapper = Wrapper{
-		Asset:     "ETHUSDC",
-		Amount:    0.002,
-		Intervals: []Interval{m1, m5, m15, m30, h1},
-		Main: Signal{
-			Name:   "EMA",
-			Type:   "Moving Average",
-			Params: make(map[Indicator]int),
-		},
-	}
-
-	testStrat.Main.Params[SMA_short] = 9
-	testStrat.Main.Params[SMA_long] = 15
-	testStrat.Main.Params[SMA_super_long] = 200
-	testStrat.Main.Params[RSI] = 14
-	r, err := testStrat.Run(client)
-	if err != nil {
-		fmt.Println(err)
-	}
-	r.SaveTradeResult(testStrat.Intervals[0])
-}
-
-func Run(client *binance_connector.Client) error {
-	var testStrat Wrapper = Wrapper{
-		Asset:     "ETHUSDC",
-		Amount:    0.002,
-		Intervals: []Interval{m5, m15, m30, h1},
-		Main: Signal{
-			Name:   "EMA",
-			Type:   "Moving Average",
-			Params: make(map[Indicator]int),
-		},
-	}
-
-	testStrat.Main.Params[SMA_short] = 9
-	testStrat.Main.Params[SMA_long] = 15
-	testStrat.Main.Params[SMA_super_long] = 200
-	testStrat.Main.Params[RSI] = 14
-
-	r, err := testStrat.Run(client)
-	if err != nil {
-		return err
-	}
-	return r.SaveTradeResult(testStrat.Intervals[0])
-
-}
+// creer des commandes pour backte

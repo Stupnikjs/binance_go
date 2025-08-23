@@ -61,6 +61,7 @@ type IndicatorsParams struct {
 	long_period_MA  int
 	super_long_MA   int
 	RSI_coef        int
+	VROC_coef       int
 }
 
 func BuildKlinesArr(client *binance_connector.Client, pair string, Interval []Interval) []*Klines {
@@ -79,8 +80,10 @@ func BuildKlinesArr(client *binance_connector.Client, pair string, Interval []In
 			Interval:   i,
 			Indicators: make(Indicators),
 		}
+
 		klinesArr = append(klinesArr, &kl)
 	}
+	fmt.Println(klinesArr)
 	return klinesArr
 }
 
@@ -113,11 +116,11 @@ func VolumeFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 // error checking
 func IndicatorstoKlines(client *binance_connector.Client, pair string, intervals []Interval, params IndicatorsParams) []*Klines {
 	klinesArr := BuildKlinesArr(client, pair, intervals)
-	ProcessKlinesNormalized(klinesArr, params)
-	return klinesArr
+	return ProcessKlinesNormalized(klinesArr, params)
 }
 
 func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Klines {
+	fmt.Println("here")
 	for _, k := range klines {
 		// caclulate RSI EMA SMA
 		close := CloseFromKlines(k.Array)
@@ -142,7 +145,7 @@ func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Kline
 
 	}
 
-	MeltRSIKline(klines[0], klines[3])
+	// MeltRSIKline(klines[0], klines[3])
 	return klines
 }
 
@@ -195,4 +198,18 @@ func MeltRSIKline(receiver *Klines, origin *Klines) error {
 	return nil
 }
 
-/*      Indicator Calculation       */
+func (k *Klines) SMAShortOverLong(index int) bool {
+	return k.Indicators[SMA_short][index] < k.Indicators[SMA_long][index]
+}
+func (k *Klines) EMAShortOverLong(index int) bool {
+	return k.Indicators[EMA_short][index] < k.Indicators[EMA_long][index]
+}
+
+func ConvertUSDCtoPAIR(client *binance_connector.Client, USDCamount float64, pair string) float64 {
+	klines := BuildKlinesArr(client, pair, []Interval{m1})
+	f_close, err := strconv.ParseFloat(klines[0].Array[0].Close, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return USDCamount / f_close
+}
