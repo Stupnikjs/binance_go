@@ -73,6 +73,7 @@ func (s *Wrapper) Test(client *binance_connector.Client) (*Result, error) {
 		params)
 
 	result := s.InitResult(s.Asset, klines[0].Array)
+	result.Params = s.Main.Params
 	closedTrade := []BackTestTrader{}
 	var prev bool
 	t := InitBackTestTrader(s.Asset, s.Amount, klines[0])
@@ -92,8 +93,9 @@ func (s *Wrapper) Test(client *binance_connector.Client) (*Result, error) {
 		}
 
 	}
+	result.Ratio = 1.0
 	for _, t := range closedTrade {
-		fmt.Println(t.Buy_price, t.Sell_price)
+		result.Ratio = t.Sell_price / t.Buy_price
 	}
 	return &result, nil
 }

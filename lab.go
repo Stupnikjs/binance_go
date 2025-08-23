@@ -40,7 +40,7 @@ func ConvertUSDCtoPAIR(client *binance_connector.Client, USDCamount float64, pai
 * create strategy with some for loop generated parameters
 * then test it
  */
-func ParralelTest(client *binance_connector.Client, pair string, interval []Interval) []Result {
+func ParralelTest(client *binance_connector.Client, interval []Interval) []Result {
 	var allResult []Result
 	var wg sync.WaitGroup
 	resultsChan := make(chan Result, 32*16) // Buffered channel
@@ -59,6 +59,10 @@ func ParralelTest(client *binance_connector.Client, pair string, interval []Inte
 
 			// Create copies of the strategies for each goroutine
 			amount := ConvertUSDCtoPAIR(client, 30, pair)
+			paramMap := make(map[Indicator]int)
+			paramMap[SMA_short] = 13
+			paramMap[SMA_long] = 43
+			paramMap[SMA_super_long] = 200
 			s := Wrapper{
 				Asset:     pair,
 				Amount:    amount,
@@ -66,9 +70,10 @@ func ParralelTest(client *binance_connector.Client, pair string, interval []Inte
 				Main: Signal{
 					Name:   "EMA",
 					Type:   "Moving Average",
-					Params: make(map[Indicator]int),
+					Params: paramMap,
 				},
 			}
+
 			s.Main.Params[SMA_short] = 13
 			s.Main.Params[SMA_long] = 43
 			s.Main.Params[SMA_super_long] = 200

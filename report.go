@@ -13,14 +13,23 @@ func (r Result) SaveTradeResult(interval Interval) error {
 	fileName := fmt.Sprintf("%s.json", strings.ToLower(r.Pair))
 	path := path.Join("data", "trades", string(interval), fileName)
 	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
 
+	if err != nil {
+		if err == os.ErrNotExist {
+			file, err = os.Create(path)
+			if err != nil {
+				return err
+			}
+
+		}
+
+	}
+	defer file.Close()
 	bytes, err := io.ReadAll(file)
 	if err != nil {
 		return err
 	}
+
 	var oldResult []Result
 	err = json.Unmarshal(bytes, &oldResult)
 	if err != nil {
@@ -28,7 +37,8 @@ func (r Result) SaveTradeResult(interval Interval) error {
 	}
 
 	if len(oldResult) <= 0 {
-		bytes, err = json.Marshal(r)
+		oldResult = append(oldResult, r)
+		bytes, err = json.Marshal(oldResult)
 		if err != nil {
 			return err
 		}
@@ -46,6 +56,7 @@ func (r Result) SaveTradeResult(interval Interval) error {
 		return err
 	}
 	err = os.WriteFile(path, bytes, 0644)
+	fmt.Println(r)
 	return err
 
 }
