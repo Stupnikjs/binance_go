@@ -87,10 +87,10 @@ func (t *LiveTrader) Sell() error {
 
 func (t *LiveTrader) LoopBuilder(s Strategy) func(klines *Klines, prevOver *bool, i int) (bool, error) {
 	return func(klines *Klines, prevOver *bool, i int) (bool, error) {
-		// Your CrossOver logic, adapted for the LiveTrader struct.
 		closeOverMAsuperLong := OverSuperLong(klines, i)
 
 		bigOverSmall := klines.Indicators[SMA_short][i] < klines.Indicators[SMA_long][i]
+		fmt.Printf("time: %s  sma short : %f sma long: %f \n", TimeStampToDateString(int(klines.Array[i].CloseTime)), klines.Indicators[SMA_short][i], klines.Indicators[SMA_long][i])
 		f_close, err := strconv.ParseFloat(klines.Array[i-1].Close, 64)
 		if err != nil {
 			return false, err
