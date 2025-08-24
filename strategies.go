@@ -127,6 +127,7 @@ func (s *Strategy) ParralelRunWrapper(ctx context.Context, client *binance_conne
 	for _, p := range PAIRS {
 		// Launch a new goroutine for each currency pair.
   // on trader per routines 
+  // return the trade when finished 
 		go func(p string) {
 			defer wg.Done()
 
