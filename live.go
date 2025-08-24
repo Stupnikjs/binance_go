@@ -132,3 +132,11 @@ func InitLiveTrader(pair string, amount float64, client *binance_connector.Clien
 		IndicatorMap: make(map[Indicator]float64),
 	}
 }
+
+
+
+func (t *LiveTrader) RoutineWrapper(){
+
+    
+
+}
