@@ -137,6 +137,6 @@ func InitLiveTrader(pair string, amount float64, client *binance_connector.Clien
 
 func (t *LiveTrader) RoutineWrapper(){
 
-    
+   
 
 }
