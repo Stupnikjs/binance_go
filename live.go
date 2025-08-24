@@ -135,8 +135,25 @@ func InitLiveTrader(pair string, amount float64, client *binance_connector.Clien
 
 
 
-func (t *LiveTrader) RoutineWrapper(){
+func (t *LiveTrader) RoutineWrapper(wg sync.WaitGroup, closedTradeChannel channel){
+    defer wg.Done()
 
-   
+    // init trader logic 
+
+
+    // for loop Logic with timer 
+    // loop while trade isnt finish
+     prev := false 
+     for !t.TradeOver {
+     // klines 
+     // prev 
+     
+
+
+}
+
+
+    // 
+    
 
 }
