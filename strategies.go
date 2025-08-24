@@ -68,6 +68,7 @@ func (s *Strategy) TestWrapper(client *binance_connector.Client) ([]Result, erro
 		}
 	}()
 	for _, p := range PAIRS {
+  // init a trader and send it for each go routines 
 		go func(p string) {
 			defer wg.Done()
 			amount := ConvertUSDCtoPAIR(client, s.USDCAmount, p)
