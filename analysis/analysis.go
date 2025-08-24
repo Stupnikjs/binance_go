@@ -134,3 +134,5 @@ func VROCcalc(volumes []float64, period int) []float64 {
 
 	return vroc
 }
+
+// VOLUME EMA
