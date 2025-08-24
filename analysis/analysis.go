@@ -1,6 +1,8 @@
 package analysis
 
-import "math"
+import (
+	"math"
+)
 
 func SMAcalc(closingPrices []float64, period int) []float64 {
 	var SMA []float64
@@ -103,6 +105,7 @@ func EMAcalc(closingPrices []float64, period int) []float64 {
 
 // VROCcalc calculates the Volume Rate of Change indicator.
 func VROCcalc(volumes []float64, period int) []float64 {
+
 	// A period of 0 is invalid.
 	if period <= 0 {
 		return nil

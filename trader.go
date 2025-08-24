@@ -1,7 +1,7 @@
 package main
 
 var PAIRS = []string{
-	"BTCUSDC", "ETHUSDC", "LINKUSDC",
+	"BTCUSDC", "ETHUSDC", "LINKUSDC", "ALGOUSDC",
 }
 
 type ITTrader interface {

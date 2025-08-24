@@ -15,6 +15,7 @@ type Indicator string
 const (
 	RSI     Indicator = "RSI"
 	VOL     Indicator = "VOL"
+	VROC    Indicator = "VROC"
 	RSI_15m Indicator = "RSI_15m"
 	RSI_30m Indicator = "RSI_30m"
 	RSI_1h  Indicator = "RSI_1h"
@@ -83,7 +84,6 @@ func BuildKlinesArr(client *binance_connector.Client, pair string, Interval []In
 
 		klinesArr = append(klinesArr, &kl)
 	}
-	fmt.Println(klinesArr)
 	return klinesArr
 }
 
@@ -116,15 +116,16 @@ func VolumeFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 // error checking
 func IndicatorstoKlines(client *binance_connector.Client, pair string, intervals []Interval, params IndicatorsParams) []*Klines {
 	klinesArr := BuildKlinesArr(client, pair, intervals)
-	return ProcessKlinesNormalized(klinesArr, params)
+	return ProcessKlinesNormalizedRefactored(klinesArr, params)
 }
 
 func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Klines {
-	fmt.Println("here")
 	for _, k := range klines {
 		// caclulate RSI EMA SMA
 		close := CloseFromKlines(k.Array)
+		vols := VolumeFromKlines(k.Array)
 		RSI_arr := analysis.RSIcalc(close, params.RSI_coef)
+		VROC_arr := analysis.VROCcalc(vols, params.VROC_coef)
 		SMA_short_arr := analysis.SMAcalc(close, params.short_period_MA)
 		SMA_long_arr := analysis.SMAcalc(close, params.long_period_MA)
 		EMA_short_arr := analysis.EMAcalc(close, params.short_period_MA)
@@ -136,6 +137,7 @@ func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Kline
 		offset := params.super_long_MA
 		k.Array = k.Array[offset-1:]
 		k.Indicators[RSI] = RSI_arr[offset:]
+		k.Indicators[VROC] = VROC_arr[offset-params.VROC_coef-1:]
 		k.Indicators[SMA_short] = SMA_short_arr[offset-params.short_period_MA:]
 		k.Indicators[SMA_long] = SMA_long_arr[offset-params.long_period_MA:]
 		k.Indicators[EMA_short] = EMA_short_arr[offset-params.short_period_MA:]
@@ -145,7 +147,7 @@ func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Kline
 
 	}
 
-	// MeltRSIKline(klines[0], klines[3])
+	// MeltRSIKline(klines[0], klines[2]) bugging with vroc
 	return klines
 }
 
@@ -196,6 +198,42 @@ func MeltRSIKline(receiver *Klines, origin *Klines) error {
 	}
 
 	return nil
+}
+
+func ProcessKlinesNormalizedRefactored(klines []*Klines, params IndicatorsParams) []*Klines {
+	// Longest period determines the final length of all arrays.
+	maxPeriod := params.super_long_MA
+
+	for _, k := range klines {
+		close_arr := CloseFromKlines(k.Array)
+		vols_arr := VolumeFromKlines(k.Array)
+
+		// Define indicator calculations and their parameters in a structured way.
+		indicatorsToCalc := map[Indicator]struct {
+			calcFunc func([]float64, int) []float64
+			data     []float64
+			period   int
+		}{
+			RSI:            {analysis.RSIcalc, close_arr, params.RSI_coef},
+			VROC:           {analysis.VROCcalc, vols_arr, params.VROC_coef - 1},
+			SMA_short:      {analysis.SMAcalc, close_arr, params.short_period_MA},
+			SMA_long:       {analysis.SMAcalc, close_arr, params.long_period_MA},
+			EMA_short:      {analysis.EMAcalc, close_arr, params.short_period_MA},
+			EMA_long:       {analysis.EMAcalc, close_arr, params.long_period_MA},
+			SMA_super_long: {analysis.SMAcalc, close_arr, params.super_long_MA},
+			EMA_super_long: {analysis.EMAcalc, close_arr, params.super_long_MA},
+		}
+		// Slice the original Klines array first.
+		k.Array = k.Array[maxPeriod:]
+
+		// Loop through the defined calculations, perform them, and store the sliced results.
+		for name, ind := range indicatorsToCalc {
+			result := ind.calcFunc(ind.data, ind.period)
+			k.Indicators[name] = result[maxPeriod-ind.period:]
+		}
+	}
+
+	return klines
 }
 
 func (k *Klines) SMAShortOverLong(index int) bool {

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/Stupnikjs/binance_go/order"
 	binance_connector "github.com/binance/binance-connector-go"
@@ -84,12 +86,17 @@ func (t *LiveTrader) Sell() error {
 	return nil
 }
 
-func (t *LiveTrader) LoopBuilder(s Strategy) func(klines *Klines, prevOver *bool, i int) (bool, error) {
+func (t *LiveTrader) LoopBuilder() func(klines *Klines, prevOver *bool, i int) (bool, error) {
 	return func(klines *Klines, prevOver *bool, i int) (bool, error) {
-		// refactor
-		// had volumes condition
+		if len(klines.Indicators[EMA_short]) < 700 || len(klines.Indicators[EMA_long]) < 700 {
+			return false, fmt.Errorf("klines malformed")
+		}
 		bigOverSmall := klines.EMAShortOverLong(i)
-		fmt.Printf("time: %s rsi_1h %f  sma short : %f sma long: %f \n", order.TimeStampToDateString(int(klines.Array[i].CloseTime)), klines.Indicators[RSI_1h][i], klines.Indicators[SMA_short][i], klines.Indicators[SMA_long][i])
+
+		fmt.Printf("time: %s sma short : %f sma long: %f VROC: %f \n",
+			order.TimeStampToDateString(int(klines.Array[i].CloseTime))[:20], klines.Indicators[EMA_short][i],
+			klines.Indicators[EMA_long][i], klines.Indicators[VROC][i])
+
 		f_close, err := strconv.ParseFloat(klines.Array[i-1].Close, 64)
 		if err != nil {
 			return false, err
@@ -133,27 +140,24 @@ func InitLiveTrader(pair string, amount float64, client *binance_connector.Clien
 	}
 }
 
+func (t *LiveTrader) RoutineWrapper(wg *sync.WaitGroup, closedTradeChan chan LiveTrader, p string, Intervals []Interval) error {
+	defer wg.Done()
+	prev := false
+	loop := t.LoopBuilder()
+	for !t.TradeOver {
+		klines := IndicatorstoKlines(t.Client, t.Asset, Intervals, PARAMS)
 
-
-func (t *LiveTrader) RoutineWrapper(wg sync.WaitGroup, closedTradeChannel channel){
-    defer wg.Done()
-
-    // init trader logic 
-
-
-    // for loop Logic with timer 
-    // loop while trade isnt finish
-     prev := false 
-     for !t.TradeOver {
-     // klines 
-     // prev 
-     
-
-
-}
-
-
-    // 
-    
-
+		signal, err := loop(klines[0], &prev, len(klines[0].Array)-1)
+		if err != nil {
+			return err
+		}
+		prev = signal
+		timeToSleep, err := IntervalToTime(Intervals[0])
+		time.Sleep(timeToSleep)
+		if err != nil {
+			return err
+		}
+	}
+	closedTradeChan <- *t
+	return nil
 }

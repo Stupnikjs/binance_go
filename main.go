@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -39,12 +38,10 @@ func main() {
 		Intervals: []Interval{m5, m15, h1, h2},
 	}
 
-	r, err := testStrat.ParralelRunWrapper(context.Background(), client)
+	_, err = testStrat.RunWrapper(client)
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	fmt.Println(r)
 
 	// Get API credentials from environment variable
 
