@@ -7,9 +7,11 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	kli "github.com/Stupnikjs/binance_go/pkg/klines"
 )
 
-func (r Result) SaveTradeResult(interval Interval) error {
+func (r Result) SaveTradeResult(interval kli.Interval) error {
 	fileName := fmt.Sprintf("%s.json", strings.ToLower(r.Pair))
 	path := path.Join("data", "trades", string(interval), fileName)
 	file, err := os.Open(path)

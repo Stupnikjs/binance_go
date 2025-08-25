@@ -1,4 +1,4 @@
-package main
+package klines
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Stupnikjs/binance_go/analysis"
+	"github.com/Stupnikjs/binance_go/pkg/analysis"
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
@@ -58,9 +58,9 @@ type Klines struct {
 }
 
 type IndicatorsParams struct {
-	short_period_MA int
-	long_period_MA  int
-	super_long_MA   int
+	Short_period_MA int
+	Long_period_MA  int
+	Super_long_MA   int
 	RSI_coef        int
 	VROC_coef       int
 }
@@ -126,22 +126,22 @@ func ProcessKlinesNormalized(klines []*Klines, params IndicatorsParams) []*Kline
 		vols := VolumeFromKlines(k.Array)
 		RSI_arr := analysis.RSIcalc(close, params.RSI_coef)
 		VROC_arr := analysis.VROCcalc(vols, params.VROC_coef)
-		SMA_short_arr := analysis.SMAcalc(close, params.short_period_MA)
-		SMA_long_arr := analysis.SMAcalc(close, params.long_period_MA)
-		EMA_short_arr := analysis.EMAcalc(close, params.short_period_MA)
-		EMA_long_arr := analysis.EMAcalc(close, params.long_period_MA)
-		SMA_super_long_arr := analysis.SMAcalc(close, params.super_long_MA)
-		EMA_super_long_arr := analysis.EMAcalc(close, params.super_long_MA)
+		SMA_short_arr := analysis.SMAcalc(close, params.Short_period_MA)
+		SMA_long_arr := analysis.SMAcalc(close, params.Long_period_MA)
+		EMA_short_arr := analysis.EMAcalc(close, params.Short_period_MA)
+		EMA_long_arr := analysis.EMAcalc(close, params.Long_period_MA)
+		SMA_super_long_arr := analysis.SMAcalc(close, params.Super_long_MA)
+		EMA_super_long_arr := analysis.EMAcalc(close, params.Super_long_MA)
 
 		// return sliced array of same length
-		offset := params.super_long_MA
+		offset := params.Super_long_MA
 		k.Array = k.Array[offset-1:]
 		k.Indicators[RSI] = RSI_arr[offset:]
 		k.Indicators[VROC] = VROC_arr[offset-params.VROC_coef-1:]
-		k.Indicators[SMA_short] = SMA_short_arr[offset-params.short_period_MA:]
-		k.Indicators[SMA_long] = SMA_long_arr[offset-params.long_period_MA:]
-		k.Indicators[EMA_short] = EMA_short_arr[offset-params.short_period_MA:]
-		k.Indicators[EMA_long] = EMA_long_arr[offset-params.long_period_MA:]
+		k.Indicators[SMA_short] = SMA_short_arr[offset-params.Short_period_MA:]
+		k.Indicators[SMA_long] = SMA_long_arr[offset-params.Long_period_MA:]
+		k.Indicators[EMA_short] = EMA_short_arr[offset-params.Short_period_MA:]
+		k.Indicators[EMA_long] = EMA_long_arr[offset-params.Long_period_MA:]
 		k.Indicators[SMA_super_long] = SMA_super_long_arr
 		k.Indicators[EMA_super_long] = EMA_super_long_arr
 
@@ -202,7 +202,7 @@ func MeltRSIKline(receiver *Klines, origin *Klines) error {
 
 func ProcessKlinesNormalizedRefactored(klines []*Klines, params IndicatorsParams) []*Klines {
 	// Longest period determines the final length of all arrays.
-	maxPeriod := params.super_long_MA
+	maxPeriod := params.Super_long_MA
 
 	for _, k := range klines {
 		close_arr := CloseFromKlines(k.Array)
@@ -216,12 +216,12 @@ func ProcessKlinesNormalizedRefactored(klines []*Klines, params IndicatorsParams
 		}{
 			RSI:            {analysis.RSIcalc, close_arr, params.RSI_coef},
 			VROC:           {analysis.VROCcalc, vols_arr, params.VROC_coef - 1},
-			SMA_short:      {analysis.SMAcalc, close_arr, params.short_period_MA},
-			SMA_long:       {analysis.SMAcalc, close_arr, params.long_period_MA},
-			EMA_short:      {analysis.EMAcalc, close_arr, params.short_period_MA},
-			EMA_long:       {analysis.EMAcalc, close_arr, params.long_period_MA},
-			SMA_super_long: {analysis.SMAcalc, close_arr, params.super_long_MA},
-			EMA_super_long: {analysis.EMAcalc, close_arr, params.super_long_MA},
+			SMA_short:      {analysis.SMAcalc, close_arr, params.Short_period_MA},
+			SMA_long:       {analysis.SMAcalc, close_arr, params.Long_period_MA},
+			EMA_short:      {analysis.EMAcalc, close_arr, params.Short_period_MA},
+			EMA_long:       {analysis.EMAcalc, close_arr, params.Long_period_MA},
+			SMA_super_long: {analysis.SMAcalc, close_arr, params.Super_long_MA},
+			EMA_super_long: {analysis.EMAcalc, close_arr, params.Super_long_MA},
 		}
 		// Slice the original Klines array first.
 		k.Array = k.Array[maxPeriod:]

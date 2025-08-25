@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	kli "github.com/Stupnikjs/binance_go/pkg/klines"
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/google/uuid"
 )
@@ -13,22 +14,22 @@ type BackTestTrader struct {
 	Client       *binance_connector.Client
 	Asset        string
 	Amount       float64
-	IndicatorMap map[Indicator]float64
+	IndicatorMap map[kli.Indicator]float64
 	TradeOver    bool
 	Buy_price    float64
 	Buy_time     int64
 	Sell_price   float64
 	Sell_time    int64
-	Klines       *Klines // Needed for backtesting
-	Index        int     // Current index in the Klines array
+	Klines       *kli.Klines // Needed for backtesting
+	Index        int         // Current index in the Klines array
 }
 
-func InitBackTestTrader(pair string, amount float64, klines *Klines) *BackTestTrader {
+func InitBackTestTrader(pair string, amount float64, klines *kli.Klines) *BackTestTrader {
 	return &BackTestTrader{
 		Id:           uuid.New(),
 		Asset:        pair,
 		Amount:       amount,
-		IndicatorMap: make(map[Indicator]float64),
+		IndicatorMap: make(map[kli.Indicator]float64),
 		Klines:       klines,
 		Index:        0,
 		TradeOver:    false,
@@ -58,13 +59,13 @@ func (t *BackTestTrader) Sell() error {
 	return nil
 }
 
-func (b *BackTestTrader) LoopBuilder(s Strategy) func(klines *Klines, prevOver *bool, i int) (bool, error) {
-	return func(klines *Klines, prevOver *bool, i int) (bool, error) {
+func (b *BackTestTrader) LoopBuilder(s Strategy) func(klines *kli.Klines, prevOver *bool, i int) (bool, error) {
+	return func(klines *kli.Klines, prevOver *bool, i int) (bool, error) {
 		b.Klines = klines
 		b.Index += 1
 
 		closeOverMAsuperLong := OverSuperLong(klines, i)
-		bigOverSmall := klines.Indicators[EMA_short][i] < klines.Indicators[EMA_long][i]
+		bigOverSmall := klines.Indicators[kli.EMA_short][i] < klines.Indicators[kli.EMA_long][i]
 
 		if !bigOverSmall && *prevOver && closeOverMAsuperLong && b.Buy_time == 0 {
 			if err := b.Buy(); err != nil {

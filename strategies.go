@@ -5,14 +5,15 @@ import (
 	"strconv"
 	"sync"
 
+	kli "github.com/Stupnikjs/binance_go/pkg/klines"
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
 type Strategy struct {
 	USDCAmount float64
 	Type       string
-	Params     IndicatorsParams
-	Intervals  []Interval
+	Params     kli.IndicatorsParams
+	Intervals  []kli.Interval
 }
 
 type Result struct {
@@ -20,14 +21,13 @@ type Result struct {
 	StartStamp int
 	EndStamp   int
 	Ratio      float64
-	Params     IndicatorsParams
+	Params     kli.IndicatorsParams
 }
 
-var PARAMS = IndicatorsParams{
-
-	short_period_MA: 9,
-	long_period_MA:  21,
-	super_long_MA:   200,
+var PARAMS = kli.IndicatorsParams{
+	Short_period_MA: 9,
+	Long_period_MA:  21,
+	Super_long_MA:   200,
 	RSI_coef:        14,
 	VROC_coef:       15,
 }
@@ -47,12 +47,12 @@ func (r *Result) GetRatioLive(trades []*LiveTrader) {
 	}
 }
 
-func OverSuperLong(kline *Klines, i int) bool {
+func OverSuperLong(kline *kli.Klines, i int) bool {
 	f_close, err := strconv.ParseFloat(kline.Array[i].Close, 64)
 	if err != nil {
 		fmt.Println(err)
 	}
-	return f_close > kline.Indicators[SMA_super_long][i]
+	return f_close > kline.Indicators[kli.SMA_super_long][i]
 }
 
 func (s *Strategy) RunWrapper(client *binance_connector.Client) ([]LiveTrader, error) {
@@ -67,7 +67,7 @@ func (s *Strategy) RunWrapper(client *binance_connector.Client) ([]LiveTrader, e
 	}()
 	for _, p := range PAIRS {
 		// init a trader and send it for each go routines
-		amout := ConvertUSDCtoPAIR(client, s.USDCAmount, p)
+		amout := kli.ConvertUSDCtoPAIR(client, s.USDCAmount, p)
 		t := InitLiveTrader(p, amout, client)
 		// THERE
 		go t.RoutineWrapper(&wg, closedTradeChan, p, s.Intervals)

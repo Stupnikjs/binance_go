@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Stupnikjs/binance_go/order"
+	kli "github.com/Stupnikjs/binance_go/pkg/klines"
+	"github.com/Stupnikjs/binance_go/pkg/order"
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
@@ -17,7 +18,7 @@ type LiveTrader struct {
 	Client       *binance_connector.Client
 	Asset        string
 	Amount       float64
-	IndicatorMap map[Indicator]float64
+	IndicatorMap map[kli.Indicator]float64
 	TradeOver    bool
 	Buy_price    float64
 	Buy_time     int64
@@ -86,16 +87,16 @@ func (t *LiveTrader) Sell() error {
 	return nil
 }
 
-func (t *LiveTrader) LoopBuilder() func(klines *Klines, prevOver *bool, i int) (bool, error) {
-	return func(klines *Klines, prevOver *bool, i int) (bool, error) {
-		if len(klines.Indicators[EMA_short]) < 700 || len(klines.Indicators[EMA_long]) < 700 {
+func (t *LiveTrader) LoopBuilder() func(klines *kli.Klines, prevOver *bool, i int) (bool, error) {
+	return func(klines *kli.Klines, prevOver *bool, i int) (bool, error) {
+		if len(klines.Indicators[kli.EMA_short]) < 700 || len(klines.Indicators[kli.EMA_long]) < 700 {
 			return false, fmt.Errorf("klines malformed")
 		}
 		bigOverSmall := klines.EMAShortOverLong(i)
 
 		fmt.Printf("time: %s sma short : %f sma long: %f VROC: %f \n",
-			order.TimeStampToDateString(int(klines.Array[i].CloseTime))[:20], klines.Indicators[EMA_short][i],
-			klines.Indicators[EMA_long][i], klines.Indicators[VROC][i])
+			order.TimeStampToDateString(int(klines.Array[i].CloseTime))[:20], klines.Indicators[kli.EMA_short][i],
+			klines.Indicators[kli.EMA_long][i], klines.Indicators[kli.VROC][i])
 
 		f_close, err := strconv.ParseFloat(klines.Array[i-1].Close, 64)
 		if err != nil {
@@ -136,23 +137,23 @@ func InitLiveTrader(pair string, amount float64, client *binance_connector.Clien
 		Asset:        pair,
 		Amount:       amount,
 		Client:       client,
-		IndicatorMap: make(map[Indicator]float64),
+		IndicatorMap: make(map[kli.Indicator]float64),
 	}
 }
 
-func (t *LiveTrader) RoutineWrapper(wg *sync.WaitGroup, closedTradeChan chan LiveTrader, p string, Intervals []Interval) error {
+func (t *LiveTrader) RoutineWrapper(wg *sync.WaitGroup, closedTradeChan chan LiveTrader, p string, Intervals []kli.Interval) error {
 	defer wg.Done()
 	prev := false
 	loop := t.LoopBuilder()
 	for !t.TradeOver {
-		klines := IndicatorstoKlines(t.Client, t.Asset, Intervals, PARAMS)
+		klines := kli.IndicatorstoKlines(t.Client, t.Asset, Intervals, PARAMS)
 
 		signal, err := loop(klines[0], &prev, len(klines[0].Array)-1)
 		if err != nil {
 			return err
 		}
 		prev = signal
-		timeToSleep, err := IntervalToTime(Intervals[0])
+		timeToSleep, err := kli.IntervalToTime(Intervals[0])
 		time.Sleep(timeToSleep)
 		if err != nil {
 			return err
