@@ -19,9 +19,22 @@ func SaveKline(pair string, interval Interval) error {
 	return nil
 }
 
-func SaveKlinesToFile(data []binance_connector.KlinesResponse, filename string) error {
+func SaveKlineToFile(kline Klines, pair string, interval Interval) error {
+	fileName := fmt.Sprintf("%s_%s", pair, string(interval))
+	var data []binance_connector.KlinesResponse
+	for _, k := range kline.Array {
+		data = append(data, *k)
+	}
+	return SaveToFile(data, fileName)
+}
+
+func SaveToFile(data []binance_connector.KlinesResponse, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
+		if err != os.ErrExist {
+			// call the append method
+			return nil
+		}
 		return fmt.Errorf("could not create file: %w", err)
 	}
 	defer file.Close()
