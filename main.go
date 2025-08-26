@@ -10,16 +10,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const (
-	m1  kli.Interval = "1m"
-	m5  kli.Interval = "5m"
-	m15 kli.Interval = "15m"
-	m30 kli.Interval = "30m"
-	h1  kli.Interval = "1h"
-	h2  kli.Interval = "2h"
-	h4  kli.Interval = "4h"
-)
-
 func main() {
 
 	err := godotenv.Load()
@@ -55,8 +45,16 @@ func main() {
 		}
 
 	*/
-	kline := kli.BuildKlinesArr(client, "BTCUSDC", kli.Interv)
-	kli.AppendKlineToFile(*kline[0], "BTCUSDC", kli.Interv[0])
+
+	lines, err := kli.LoadKlinesFromFile("BTCUSDC", kli.Interv[1])
+
+	for _, i := range lines {
+		fmt.Println(i)
+	}
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	// Get API credentials from environment variable
 
