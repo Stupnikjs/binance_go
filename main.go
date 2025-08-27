@@ -57,7 +57,7 @@ func main() {
 
 	*/
 
-	dumyStrat.BackTestWrapper()
+	dumyStrat.BackTestWrapper(client)
 
 	// Get API credentials from environment variable
 

@@ -3,7 +3,9 @@ package klines
 import (
 	"context"
 	"fmt"
+	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Stupnikjs/binance_go/pkg/analysis"
@@ -65,7 +67,28 @@ type IndicatorsParams struct {
 	VROC_coef       int
 }
 
-func BuildKlinesArr(client *binance_connector.Client, pair string, Interval []Interval) []*Klines {
+func BuildKlineArrData(pair string, interval []Interval) []*Klines {
+	klinesArr := []*Klines{}
+	binanceArr := []*binance_connector.KlinesResponse{}
+	path := path.Join("data", string(interval[0]), strings.ToLower(pair))
+	kline, err := LoadKlinesFromFile(path)
+	if err != nil {
+		fmt.Println(err)
+	}
+	for _, k := range kline {
+		binanceArr = append(binanceArr, &k)
+	}
+	kl := Klines{
+		Array:      binanceArr,
+		Interval:   interval[0],
+		Indicators: make(Indicators),
+	}
+
+	klinesArr = append(klinesArr, &kl)
+	return klinesArr
+}
+
+func BuildKlinesArrLive(client *binance_connector.Client, pair string, Interval []Interval) []*Klines {
 	klinesArr := []*Klines{}
 	for _, i := range Interval {
 		klines, err := client.NewKlinesService().
@@ -115,7 +138,7 @@ func VolumeFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 
 // error checking
 func IndicatorstoKlines(client *binance_connector.Client, pair string, intervals []Interval, params IndicatorsParams) []*Klines {
-	klinesArr := BuildKlinesArr(client, pair, intervals)
+	klinesArr := BuildKlinesArrLive(client, pair, intervals)
 	return ProcessKlinesNormalizedRefactored(klinesArr, params)
 }
 

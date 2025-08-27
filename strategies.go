@@ -57,7 +57,7 @@ func OverSuperLong(kline *kli.Klines, i int) bool {
 	return f_close > kline.Indicators[kli.SMA_super_long][i]
 }
 
-func (s *Strategy) BackTestWrapper() ([]BackTestTrader, error) {
+func (s *Strategy) BackTestWrapper(client *binance_connector.Client) ([]BackTestTrader, error) {
 
 	for _, p := range PAIRS {
 
@@ -66,7 +66,8 @@ func (s *Strategy) BackTestWrapper() ([]BackTestTrader, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(klines[0])
+
+		kli.ProcessKlinesNormalizedRefactored(klines)
 	}
 	return []BackTestTrader{}, nil
 }

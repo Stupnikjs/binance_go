@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 
 func TestCloseFromKlines(t *testing.T) {
 
-	klines := BuildKlinesArr(client, "BTCUSDC", Interv)
+	klines := BuildKlineArrData(client, "BTCUSDC", Interv)
 	close := CloseFromKlines(klines[0].Array)
 	if len(close) != len(klines[0].Array) {
 		t.Error("close should be equal to klines Array")
@@ -75,7 +75,7 @@ func TestIndicatorToKlines(t *testing.T) {
 		Super_long_MA:   200,
 		RSI_coef:        14,
 	}
-	_ = BuildKlinesArr(client, pair, Interv)
+	_ = BuildKlineArrData(pair, Interv)
 	_ = IndicatorstoKlines(client, pair, Interv, params)
 
 }
