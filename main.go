@@ -10,6 +10,17 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var dumyStrat Strategy = Strategy{
+	USDCAmount: 50,
+	Type:       "dumies",
+	Params: kli.IndicatorsParams{
+		Short_period_MA: 3,
+		Long_period_MA:  10,
+		RSI_coef:        14,
+	},
+	Intervals: kli.Interv[1:],
+}
+
 func main() {
 
 	err := godotenv.Load()
@@ -46,15 +57,7 @@ func main() {
 
 	*/
 
-	lines, err := kli.LoadKlinesFromFile("BTCUSDC", kli.Interv[1])
-
-	for _, i := range lines {
-		fmt.Println(i)
-	}
-
-	if err != nil {
-		fmt.Println(err)
-	}
+	dumyStrat.BackTestWrapper()
 
 	// Get API credentials from environment variable
 

@@ -35,50 +35,56 @@ func AppendKlineToFile(kline Klines, pair string, interval Interval) error {
 // This is more efficient than reading the entire file, appending, and then saving.
 // check time continuity
 func AppendToFile(data []binance_connector.KlinesResponse, filename string, interval Interval) error {
-	// os.O_APPEND ensures we write to the end of the file.
-	// os.O_CREATE creates the file if it doesn't exist, which is a good practice.
-	// os.O_WRONLY is for write-only mode.
 	path := path.Join("data", strings.ToLower(string(interval)), filename)
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("could not open file for appending: %w", err)
-	}
-	defer file.Close()
 
-	klines, err := LoadKlinesFromFile(path, interval)
+	// Load existing data from the file first.
+	// This function handles opening, decoding, and closing the file.
+	klines, err := LoadKlinesFromFile(path)
 	if err != nil {
 		return err
 	}
-	encoder := gob.NewEncoder(file)
+	// Combine the existing data with the new data.
+	// We're performing the data overlap and gap checks here on the combined data.
 	if IsDataOverlap(klines, data) {
-		data, err := SliceOverLaping(klines, data)
+		data, err = SliceOverLaping(klines, data)
 		if err != nil {
 			return err
 		}
-		if err := encoder.Encode(data); err != nil {
-			return fmt.Errorf("could not encode data: %w", err)
-
-		}
-		return nil
-	} else {
-		if err := encoder.Encode(data); err != nil {
-			return fmt.Errorf("could not encode data: %w", err)
-
-		}
 	}
-	// fix to only appen new data
-	return fmt.Errorf("wait some time because data overlaps ")
 
+	if IsThereDataGap(klines, data) {
+		return fmt.Errorf("there is a data gap")
+	}
+
+	combinedData := append(klines, data...)
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("could not open file for writing: %w", err)
+	}
+	defer file.Close()
+
+	// Create a single gob encoder for the entire process.
+	encoder := gob.NewEncoder(file)
+
+	// Encode the combined data in one go.
+	if err := encoder.Encode(combinedData); err != nil {
+		return fmt.Errorf("could not encode data: %w", err)
+	}
+
+	return nil
 }
 
 // loadKlinesFromFile has been updated to read multiple gob-encoded objects
 // from the file stream until it reaches the end of the file (io.EOF).
-func LoadKlinesFromFile(filename string, interval Interval) ([]binance_connector.KlinesResponse, error) {
+func LoadKlinesFromFile(filename string) ([]binance_connector.KlinesResponse, error) {
 
-	path := path.Join("data", string(interval), filename)
-	file, err := os.Open(path)
+	file, err := os.Open(filename)
+	if os.IsNotExist(err) {
+		return []binance_connector.KlinesResponse{}, err
+	}
 	if err != nil {
-		return nil, fmt.Errorf("could not open file: %w", err)
+		return nil, err
 	}
 	defer file.Close()
 
@@ -104,6 +110,9 @@ func LoadKlinesFromFile(filename string, interval Interval) ([]binance_connector
 }
 
 func IsDataOverlap(old []binance_connector.KlinesResponse, new []binance_connector.KlinesResponse) bool {
+	if len(old) < 1 || len(new) < 1 {
+		return false
+	}
 	lastOld := old[len(old)-1]
 	firstNew := new[0]
 
@@ -112,6 +121,29 @@ func IsDataOverlap(old []binance_connector.KlinesResponse, new []binance_connect
 	} else {
 		return false
 	}
+}
+
+func IsThereDataGap(old []binance_connector.KlinesResponse, new []binance_connector.KlinesResponse) bool {
+	if len(old) < 1 || len(new) < 1 {
+		return false
+	}
+	lastOld := old[len(old)-1]
+	firstNew := new[0]
+	regularGap, err := GetTimeGap(old)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if firstNew.CloseTime-lastOld.CloseTime > regularGap {
+		return true
+	}
+	return false
+}
+
+func GetTimeGap(kline []binance_connector.KlinesResponse) (uint64, error) {
+	if len(kline) >= 0 {
+		return kline[1].CloseTime - kline[0].CloseTime, nil
+	}
+	return 0, fmt.Errorf("kline must be at least of len 2")
 }
 
 func SliceOverLaping(old []binance_connector.KlinesResponse, new []binance_connector.KlinesResponse) ([]binance_connector.KlinesResponse, error) {

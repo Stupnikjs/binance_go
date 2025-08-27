@@ -3,8 +3,7 @@ package main
 import kli "github.com/Stupnikjs/binance_go/pkg/klines"
 
 var PAIRS = []string{
-	"BTCUSDC", "ETHUSDC", "LINKUSDC", "ALGOUSDC",
-}
+	"BTCUSDC", "ETHUSDC", "LINKUSDC", "ALGOUSDC", "HBARUSDC", "SOLUSDC", "AAVEUSDC"}
 
 type ITTrader interface {
 	Buy() error

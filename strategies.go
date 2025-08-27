@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"path"
 	"strconv"
+	"strings"
 	"sync"
 
 	kli "github.com/Stupnikjs/binance_go/pkg/klines"
@@ -53,6 +55,20 @@ func OverSuperLong(kline *kli.Klines, i int) bool {
 		fmt.Println(err)
 	}
 	return f_close > kline.Indicators[kli.SMA_super_long][i]
+}
+
+func (s *Strategy) BackTestWrapper() ([]BackTestTrader, error) {
+
+	for _, p := range PAIRS {
+
+		path := path.Join("data", string(s.Intervals[0]), strings.ToLower(p))
+		klines, err := kli.LoadKlinesFromFile(path)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println(klines[0])
+	}
+	return []BackTestTrader{}, nil
 }
 
 func (s *Strategy) RunWrapper(client *binance_connector.Client) ([]LiveTrader, error) {
