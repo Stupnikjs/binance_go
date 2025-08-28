@@ -10,18 +10,16 @@ import (
 type BackTestTrader struct {
 	Pair     string
 	Amounts  []float64
-	Curr     *Trade
 	Data     map[kli.Indicator][]float64
 	BuyCond  func()
 	SellCond func()
 }
 
-
 type TradeReport struct {
 	TradeId    uuid.UUID
 	Asset      string
 	Amount     float64
-	TradeOver bool 
+	TradeOver  bool
 	Buy_price  float64
 	Buy_time   int64
 	Sell_price float64
@@ -36,15 +34,15 @@ func (t *BackTestTrader) Buy() error {
 func (b *BackTestTrader) Loop(wg *sync.WaitGroup, tr chan TradeReport) error {
 	t := TradeReport{}
 	defer wg.Done()
-	for i := 0 ; i < len(b.Data); i++ {
-		// logic buy => fill tradeReport 
-		
-		// initTrade 
-		// logic sell 
+	for i := 0; i < len(b.Data); i++ {
+		// logic buy => fill tradeReport
 
-		// if trade over 
-		
-		tr <- t 
+		// initTrade
+		// logic sell
+
+		// if trade over
+
+		tr <- t
 
 	}
 	return nil
@@ -54,6 +52,7 @@ func (b *BackTestTrader) SetStop(price float64) error {
 	return nil
 }
 
+/*
 func RunBackTest() error {
 	var wg sync.WaitGroup
 	reports := []TradeReport{}
@@ -74,3 +73,6 @@ func RunBackTest() error {
 	wg.Wait()
 
 }
+
+
+*/

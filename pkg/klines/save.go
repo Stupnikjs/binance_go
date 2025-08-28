@@ -11,17 +11,6 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-// NOT WORKING
-// append price to the file based on the interval and pair
-func SaveKline(pair string, interval Interval) error {
-	if !strings.HasSuffix(pair, "USDC") {
-		return fmt.Errorf("give a pair with USDC")
-	}
-	var klineData []binance_connector.KlinesResponse
-	_ = klineData
-	return nil
-}
-
 // AppendToFile opens a file in append mode and encodes the new data to the end.
 // This is more efficient than reading the entire file, appending, and then saving.
 // check time continuity
@@ -31,6 +20,25 @@ func AppendToFile(data []binance_connector.KlinesResponse, pair string, interval
 	// Load existing data from the file first.
 	// This function handles opening, decoding, and closing the file.
 	klines, err := LoadKlinesFromFile(path)
+	if os.IsNotExist(err) {
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			return fmt.Errorf("could not open file for writing: %w", err)
+		}
+		defer file.Close()
+
+		// Create a single gob encoder for the entire process.
+		encoder := gob.NewEncoder(file)
+
+		// Encode the combined data in one go.
+		if err := encoder.Encode(data); err != nil {
+			return fmt.Errorf("could not encode data: %w", err)
+		}
+
+		return nil
+
+	}
+
 	if err != nil {
 		return err
 	}

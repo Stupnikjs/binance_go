@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/Stupnikjs/binance_go/pkg/klines"
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/joho/godotenv"
 )
@@ -28,6 +29,12 @@ func main() {
 
 	// Get API credentials from environment variable
 
-}
+	for _, i := range PAIRS {
+		err = klines.AppendNewData(client, i, klines.Interv[1:])
 
-// creer des commandes pour backte
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+}
