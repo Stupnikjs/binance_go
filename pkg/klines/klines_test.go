@@ -41,13 +41,13 @@ func TestMain(m *testing.M) {
 
 func TestCloseFromKlines(t *testing.T) {
 
-	klines := BuildKlineArrData(client, "BTCUSDC", Interv)
-	close := CloseFromKlines(klines[0].Array)
-	if len(close) != len(klines[0].Array) {
+	klines := BuildKlineArrData("BTCUSDC", Interv)
+	close := CloseFromKlines(klines)
+	if len(close) != len(klines) {
 		t.Error("close should be equal to klines Array")
 	}
 
-	f_close, err := strconv.ParseFloat(klines[0].Array[0].Close, 64)
+	f_close, err := strconv.ParseFloat(klines[0].Close, 64)
 
 	if err != nil {
 		t.Errorf("float conversion gave error %v", err)
@@ -55,27 +55,4 @@ func TestCloseFromKlines(t *testing.T) {
 	if close[0] != f_close {
 		t.Error("first value of array and close array are diffrent")
 	}
-}
-
-func TestBuildKlinesArr(t *testing.T) {
-	klinesArr := BuildKlinesArr(client, "BTCUSD", Interv)
-
-	if len(klinesArr) != len(Interv) {
-		t.Error("klines arr should be same len as Interval array ")
-	}
-	// check if data is continuous
-
-}
-
-func TestIndicatorToKlines(t *testing.T) {
-	pair := "BTCUSDC"
-	params := IndicatorsParams{
-		Short_period_MA: 3,
-		Long_period_MA:  10,
-		Super_long_MA:   200,
-		RSI_coef:        14,
-	}
-	_ = BuildKlineArrData(pair, Interv)
-	_ = IndicatorstoKlines(client, pair, Interv, params)
-
 }

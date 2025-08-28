@@ -22,20 +22,11 @@ func SaveKline(pair string, interval Interval) error {
 	return nil
 }
 
-func AppendKlineToFile(kline Klines, pair string, interval Interval) error {
-	fileName := strings.ToLower(pair)
-	var data []binance_connector.KlinesResponse
-	for _, k := range kline.Array {
-		data = append(data, *k)
-	}
-	return AppendToFile(data, fileName, interval)
-}
-
 // AppendToFile opens a file in append mode and encodes the new data to the end.
 // This is more efficient than reading the entire file, appending, and then saving.
 // check time continuity
-func AppendToFile(data []binance_connector.KlinesResponse, filename string, interval Interval) error {
-	path := path.Join("data", strings.ToLower(string(interval)), filename)
+func AppendToFile(data []binance_connector.KlinesResponse, pair string, interval Interval) error {
+	path := path.Join("data", strings.ToLower(string(interval)), pair)
 
 	// Load existing data from the file first.
 	// This function handles opening, decoding, and closing the file.
