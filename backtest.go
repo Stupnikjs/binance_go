@@ -16,17 +16,12 @@ type BackTestTrader struct {
 	SellCond func()
 }
 
-type Trade struct {
-	Id        uuid.UUID
-	Asset     string
-	Amount    float64
-	TradeOver bool
-}
 
 type TradeReport struct {
 	TradeId    uuid.UUID
 	Asset      string
 	Amount     float64
+	TradeOver bool 
 	Buy_price  float64
 	Buy_time   int64
 	Sell_price float64
@@ -38,8 +33,20 @@ func (t *BackTestTrader) Buy() error {
 
 	return nil
 }
-func (t *BackTestTrader) Loop(chan TradeReport) error {
+func (b *BackTestTrader) Loop(wg *sync.WaitGroup, tr chan TradeReport) error {
+	t := TradeReport{}
+	defer wg.Done()
+	for i := 0 ; i < len(b.Data); i++ {
+		// logic buy => fill tradeReport 
+		
+		// initTrade 
+		// logic sell 
 
+		// if trade over 
+		
+		tr <- t 
+
+	}
 	return nil
 }
 
@@ -51,7 +58,7 @@ func RunBackTest() error {
 	var wg sync.WaitGroup
 	reports := []TradeReport{}
 	tradeReports := make(chan TradeReport, 1000)
-	wg.Add(50)
+	wg.Add(len(PAIRS))
 	go func() {
 		for _, r := range tradeReports {
 			reports = append(reports, r)
@@ -60,7 +67,7 @@ func RunBackTest() error {
 	for _, p := range PAIRS {
 		// init BACKTESTTRADER
 		b := InitBackTestTrader()
-		go func(wg, tradeReport) {
+		go b.Loop(wg, tradeReport) {
 
 		}()
 	}
