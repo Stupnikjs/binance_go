@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 
 	binance_connector "github.com/binance/binance-connector-go"
@@ -165,4 +166,34 @@ func SliceOverLaping(old []binance_connector.KlinesResponse, new []binance_conne
 
 	return new[index:], nil
 
+}
+
+func AppendNewData(client *binance_connector.Client, pair string, intervals []Interval) error {
+	klines, err := FetchKlines(client, pair, intervals)
+	if err != nil {
+		return err
+	}
+	err = AppendToFile(klines, pair, intervals[0])
+	if err != nil {
+		return err
+	}
+	// find a better way to test
+	filename := path.Join("data", string(intervals[0]), strings.ToLower(pair))
+	newklines, err := LoadKlinesFromFile(filename)
+	if err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(newklines[len(newklines)-1], klines[len(klines)-1]) {
+		return fmt.Errorf("append to file not working ")
+	}
+	return nil
+}
+
+func FileName(pair string, intervals []Interval) string {
+	return path.Join("data", string(intervals[0]), strings.ToLower(pair))
+}
+
+func GetFileLen(pair string, intervals []Interval) int {
+	klines, _ := LoadKlinesFromFile(FileName(pair, intervals))
+	return len(klines)
 }

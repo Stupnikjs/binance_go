@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -61,26 +60,6 @@ func BuildKlineArrData(pair string, interval []Interval) []binance_connector.Kli
 	return kline
 }
 
-func AppendNewData(client *binance_connector.Client, pair string, intervals []Interval) error {
-	klines, err := FetchKlines(client, pair, intervals)
-	if err != nil {
-		return err
-	}
-	err = AppendToFile(klines, pair, intervals[0])
-	if err != nil {
-		return err
-	}
-	// find a better way to test
-	filename := path.Join("data", string(intervals[0]), strings.ToLower(pair))
-	newklines, err := LoadKlinesFromFile(filename)
-	if err != nil {
-		return err
-	}
-	if !reflect.DeepEqual(newklines[len(newklines)-1], klines[len(klines)-1]) {
-		return fmt.Errorf("append to file not working ")
-	}
-	return nil
-}
 func FetchKlines(client *binance_connector.Client, pair string, intervals []Interval) ([]binance_connector.KlinesResponse, error) {
 	var arr []binance_connector.KlinesResponse
 	klines, err := client.NewKlinesService().

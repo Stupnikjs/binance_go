@@ -30,6 +30,7 @@ func main() {
 	// Get API credentials from environment variable
 
 	for _, i := range PAIRS {
+
 		err = klines.AppendNewData(client, i, klines.Interv[1:])
 
 		if err != nil {
