@@ -83,9 +83,7 @@ var Interv = []Interval{m1, m5, m15, m30, h1, h2, h4}
 
 type IndicatorMapFunc map[Indicator]func([]float64, int) []float64
 
-func GetRSI(klines []*binance_connector.KlinesResponse, rsi_coef float64) []float64 {
-	return analysis.RSIcalc(CloseFromKlines(klines), int(rsi_coef))
-}
+
 
 func BuildKlineArrData(pair string, interval []Interval) []*binance_connector.KlinesResponse {
 
