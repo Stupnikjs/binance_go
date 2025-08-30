@@ -42,6 +42,7 @@ func TestMain(m *testing.M) {
 func TestCloseFromKlines(t *testing.T) {
 
 	klines := BuildKlineArrData("BTCUSDC", Interv)
+
 	close := CloseFromKlines(klines)
 	if len(close) != len(klines) {
 		t.Error("close should be equal to klines Array")

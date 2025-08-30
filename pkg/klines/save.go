@@ -90,13 +90,13 @@ func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, e
 	}
 	defer file.Close()
 
-	var allData []*binance_connector.KlinesResponse
+	var allData []binance_connector.KlinesResponse
 	decoder := gob.NewDecoder(file)
 
 	// Loop to decode all objects from the gob stream until an error or EOF is encountered.
 	for {
-		var data []*binance_connector.KlinesResponse
-		if err := decoder.Decode(data); err != nil {
+		var data []binance_connector.KlinesResponse
+		if err := decoder.Decode(&data); err != nil {
 			// If we reach the end of the file, break the loop.
 			if err == io.EOF {
 				break
@@ -107,8 +107,11 @@ func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, e
 		// Append the newly decoded data to the slice of all data.
 		allData = append(allData, data...)
 	}
-
-	return allData, nil
+	var refData []*binance_connector.KlinesResponse
+	for _, k := range allData {
+		refData = append(refData, &k)
+	}
+	return refData, nil
 }
 
 func IsDataOverlap(old []*binance_connector.KlinesResponse, new []*binance_connector.KlinesResponse) bool {
@@ -185,10 +188,15 @@ func AppendNewData(client *binance_connector.Client, pair string, intervals []In
 	if err != nil {
 		return err
 	}
+	// find better way to test
 	if !reflect.DeepEqual(newklines[len(newklines)-1], klines[len(klines)-1]) {
 		return fmt.Errorf("append to file not working ")
 	}
 	return nil
+}
+
+func CheckWholeHasNoTimeGap() {
+	_ = "hello"
 }
 
 // to CSV

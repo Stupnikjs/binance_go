@@ -87,15 +87,15 @@ func GetRSI(klines []*binance_connector.KlinesResponse, rsi_coef float64) []floa
 	return analysis.RSIcalc(CloseFromKlines(klines), int(rsi_coef))
 }
 
-func BuildKlineArrData(pair string, interval []Interval) []binance_connector.KlinesResponse {
+func BuildKlineArrData(pair string, interval []Interval) []*binance_connector.KlinesResponse {
 
 	path := path.Join("data", string(interval[0]), strings.ToLower(pair))
 	kline, err := LoadKlinesFromFile(path)
 	if err != nil {
 		fmt.Println(err)
 	}
-	derefKline := DeRefKlinesArray(kline)
-	return derefKline
+
+	return kline
 }
 
 func FetchKlines(client *binance_connector.Client, pair string, intervals []Interval) ([]*binance_connector.KlinesResponse, error) {
