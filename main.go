@@ -46,6 +46,7 @@ func Loop(client *binance_connector.Client, pair string, interval []klines.Inter
 	for {
 		k, _ := klines.FetchKlines(client, pair, interval)
 		// build two last items
+  
 		signalArrays := klines.BuildSuperArray(k, klines.Indicators, 2)
 		fmt.Println(len(signalArrays))
 
