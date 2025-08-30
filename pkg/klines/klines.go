@@ -29,6 +29,7 @@ type Indicator struct {
 	Data   string
 	Type   string
 	Params int
+ Values []float64
 }
 
 type mapIndicator map[string]func([]float64, int) []float64
@@ -49,11 +50,16 @@ func InitMapIndic(ind []Indicator) mapIndicator {
 
 }
 
-func BuildSuperArray(k []*binance_connector.KlinesResponse, indicators []Indicator, sliceLen int) [][]float64 {
+
+// refactor 
+
+
+
+func BuildSuperArray(k []*binance_connector.KlinesResponse, indicators []Indicator) [][]float64 {
 	var superArray [][]float64
 	close := CloseFromKlines(k)
 	vols := VolumeFromKlines(k)
-	index := len(close) - sliceLen + 1
+	index := len(close) + 1
 	superArray = append(superArray, close[index:])
 	superArray = append(superArray, vols[index:])
 	mapIndicator := InitMapIndic(indicators)
