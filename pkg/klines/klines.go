@@ -29,15 +29,37 @@ type Indicator struct {
 	Data   string
 	Type   string
 	Params int
- Values []float64
+	Values *[]float64
 }
 
 type mapIndicator map[string]func([]float64, int) []float64
 
-var Indicators = []Indicator{
+type Data struct {
+	Pair       string
+	Interval   Interval
+	Indicators []Indicator
+	Volume     []float64
+	Price      []float64
+}
 
-	{"RSI", "Price", "Coef", 14}, {
-		"EMA", "Price", "Avg", 9},
+func (d *Data) InitData(k []*binance_connector.KlinesResponse, pair string, interval Interval, ind []Indicator) {
+	mapInd := InitMapIndic(ind)
+	d.Interval = interval
+	d.Pair = pair
+	d.Price = CloseFromKlines(k)
+	d.Volume = VolumeFromKlines(k)
+	for _, i := range ind {
+		if i.Data == "Price" {
+			*i.Values = mapInd[i.Name](d.Price, i.Params)
+		}
+
+	}
+
+}
+
+var Indicators = []Indicator{
+	{"RSI", "Price", "Coef", 14, nil}, {
+		"EMA", "Price", "Avg", 9, nil},
 }
 
 func InitMapIndic(ind []Indicator) mapIndicator {
@@ -50,10 +72,7 @@ func InitMapIndic(ind []Indicator) mapIndicator {
 
 }
 
-
-// refactor 
-
-
+// refactor
 
 func BuildSuperArray(k []*binance_connector.KlinesResponse, indicators []Indicator) [][]float64 {
 	var superArray [][]float64
@@ -73,8 +92,7 @@ func BuildSuperArray(k []*binance_connector.KlinesResponse, indicators []Indicat
 			indicArr = mapIndicator[indicator.Name](vols, indicator.Params)
 		}
 
-		sliceIndex := len(indicArr) - sliceLen + 1
-		superArray[i] = indicArr[sliceIndex:]
+		superArray[i] = indicArr[index:]
 	}
 	return superArray
 }
@@ -88,8 +106,6 @@ func IntervalToTime(interval Interval) (time.Duration, error) {
 var Interv = []Interval{m1, m5, m15, m30, h1, h2, h4}
 
 type IndicatorMapFunc map[Indicator]func([]float64, int) []float64
-
-
 
 func BuildKlineArrData(pair string, interval []Interval) []*binance_connector.KlinesResponse {
 

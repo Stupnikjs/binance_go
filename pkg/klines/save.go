@@ -6,12 +6,10 @@ import (
 	"io"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
-
 
 func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interval Interval) error {
 	derefData := DeRefKlinesArray(data)
@@ -75,7 +73,6 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 	return nil
 }
 
-
 func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, error) {
 
 	file, err := os.Open(filename)
@@ -123,51 +120,6 @@ func IsDataOverlap(old []*binance_connector.KlinesResponse, new []*binance_conne
 	} else {
 		return false
 	}
-}
-
-func IsThereDataGap(old []*binance_connector.KlinesResponse, new []*binance_connector.KlinesResponse) bool {
-	if len(old) < 1 || len(new) < 1 {
-		return false
-	}
-	lastOld := old[len(old)-1]
-	firstNew := new[0]
-	regularGap, err := GetTimeGap(old)
-	if err != nil {
-		fmt.Println(err)
-	}
-	if firstNew.CloseTime-lastOld.CloseTime > regularGap {
-		return true
-	}
-	return false
-}
-
-func GetTimeGap(kline []*binance_connector.KlinesResponse) (uint64, error) {
-	if len(kline) >= 0 {
-		return kline[1].CloseTime - kline[0].CloseTime, nil
-	}
-	return 0, fmt.Errorf("kline must be at least of len 2")
-}
-
-func SliceOverLaping(old []*binance_connector.KlinesResponse, new []*binance_connector.KlinesResponse) ([]*binance_connector.KlinesResponse, error) {
-
-	if !IsDataOverlap(old, new) {
-		return nil, fmt.Errorf(" data isnt overlaping ")
-	}
-	lastOld := old[len(old)-1]
-	var index int
-	for i, n := range new {
-		if n.CloseTime > lastOld.CloseTime {
-			index = i
-			break
-		}
-	}
-
-	if index == 0 && new[0].CloseTime <= lastOld.CloseTime {
-		return []*binance_connector.KlinesResponse{}, nil // All new data is already in old.
-	}
-
-	return new[index:], nil
-
 }
 
 func AppendNewData(client *binance_connector.Client, pair string, intervals []Interval) error {
