@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/Stupnikjs/binance_go/pkg/klines"
 	binance_connector "github.com/binance/binance-connector-go"
@@ -28,14 +29,14 @@ func main() {
 	}
 
 	// Get API credentials from environment variable
-
-	for _, i := range PAIRS {
-
-		err = klines.AppendNewData(client, i, klines.Interv[1:])
-
-		if err != nil {
-			fmt.Println(err)
+	for {
+		for _, i := range PAIRS {
+			err = klines.AppendNewData(client, i, klines.Interv[1:])
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
+		time.Sleep(10 * time.Minute)
 	}
 
 }
