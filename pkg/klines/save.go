@@ -197,3 +197,6 @@ func GetFileLen(pair string, intervals []Interval) int {
 	klines, _ := LoadKlinesFromFile(FileName(pair, intervals))
 	return len(klines)
 }
+
+
+// to CSV
