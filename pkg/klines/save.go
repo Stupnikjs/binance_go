@@ -15,7 +15,8 @@ import (
 // AppendToFile opens a file in append mode and encodes the new data to the end.
 // This is more efficient than reading the entire file, appending, and then saving.
 // check time continuity
-func AppendToFile(data []binance_connector.KlinesResponse, pair string, interval Interval) error {
+func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interval Interval) error {
+	derefData := DeRefKlinesArray(data)
 	path := path.Join("data", strings.ToLower(string(interval)), pair)
 
 	// Load existing data from the file first.
@@ -32,7 +33,7 @@ func AppendToFile(data []binance_connector.KlinesResponse, pair string, interval
 		encoder := gob.NewEncoder(file)
 
 		// Encode the combined data in one go.
-		if err := encoder.Encode(data); err != nil {
+		if err := encoder.Encode(derefData); err != nil {
 			return fmt.Errorf("could not encode data: %w", err)
 		}
 
@@ -57,6 +58,7 @@ func AppendToFile(data []binance_connector.KlinesResponse, pair string, interval
 	}
 
 	combinedData := append(klines, data...)
+	derefCombined := DeRefKlinesArray(combinedData)
 
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -68,7 +70,7 @@ func AppendToFile(data []binance_connector.KlinesResponse, pair string, interval
 	encoder := gob.NewEncoder(file)
 
 	// Encode the combined data in one go.
-	if err := encoder.Encode(combinedData); err != nil {
+	if err := encoder.Encode(derefCombined); err != nil {
 		return fmt.Errorf("could not encode data: %w", err)
 	}
 
@@ -77,24 +79,24 @@ func AppendToFile(data []binance_connector.KlinesResponse, pair string, interval
 
 // loadKlinesFromFile has been updated to read multiple gob-encoded objects
 // from the file stream until it reaches the end of the file (io.EOF).
-func LoadKlinesFromFile(filename string) ([]binance_connector.KlinesResponse, error) {
+func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, error) {
 
 	file, err := os.Open(filename)
 	if os.IsNotExist(err) {
-		return []binance_connector.KlinesResponse{}, err
+		return []*binance_connector.KlinesResponse{}, err
 	}
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	var allData []binance_connector.KlinesResponse
+	var allData []*binance_connector.KlinesResponse
 	decoder := gob.NewDecoder(file)
 
 	// Loop to decode all objects from the gob stream until an error or EOF is encountered.
 	for {
-		var data []binance_connector.KlinesResponse
-		if err := decoder.Decode(&data); err != nil {
+		var data []*binance_connector.KlinesResponse
+		if err := decoder.Decode(data); err != nil {
 			// If we reach the end of the file, break the loop.
 			if err == io.EOF {
 				break
@@ -109,7 +111,7 @@ func LoadKlinesFromFile(filename string) ([]binance_connector.KlinesResponse, er
 	return allData, nil
 }
 
-func IsDataOverlap(old []binance_connector.KlinesResponse, new []binance_connector.KlinesResponse) bool {
+func IsDataOverlap(old []*binance_connector.KlinesResponse, new []*binance_connector.KlinesResponse) bool {
 	if len(old) < 1 || len(new) < 1 {
 		return false
 	}
@@ -123,7 +125,7 @@ func IsDataOverlap(old []binance_connector.KlinesResponse, new []binance_connect
 	}
 }
 
-func IsThereDataGap(old []binance_connector.KlinesResponse, new []binance_connector.KlinesResponse) bool {
+func IsThereDataGap(old []*binance_connector.KlinesResponse, new []*binance_connector.KlinesResponse) bool {
 	if len(old) < 1 || len(new) < 1 {
 		return false
 	}
@@ -139,14 +141,14 @@ func IsThereDataGap(old []binance_connector.KlinesResponse, new []binance_connec
 	return false
 }
 
-func GetTimeGap(kline []binance_connector.KlinesResponse) (uint64, error) {
+func GetTimeGap(kline []*binance_connector.KlinesResponse) (uint64, error) {
 	if len(kline) >= 0 {
 		return kline[1].CloseTime - kline[0].CloseTime, nil
 	}
 	return 0, fmt.Errorf("kline must be at least of len 2")
 }
 
-func SliceOverLaping(old []binance_connector.KlinesResponse, new []binance_connector.KlinesResponse) ([]binance_connector.KlinesResponse, error) {
+func SliceOverLaping(old []*binance_connector.KlinesResponse, new []*binance_connector.KlinesResponse) ([]*binance_connector.KlinesResponse, error) {
 
 	if !IsDataOverlap(old, new) {
 		return nil, fmt.Errorf(" data isnt overlaping ")
@@ -161,7 +163,7 @@ func SliceOverLaping(old []binance_connector.KlinesResponse, new []binance_conne
 	}
 
 	if index == 0 && new[0].CloseTime <= lastOld.CloseTime {
-		return []binance_connector.KlinesResponse{}, nil // All new data is already in old.
+		return []*binance_connector.KlinesResponse{}, nil // All new data is already in old.
 	}
 
 	return new[index:], nil
@@ -188,15 +190,5 @@ func AppendNewData(client *binance_connector.Client, pair string, intervals []In
 	}
 	return nil
 }
-
-func FileName(pair string, intervals []Interval) string {
-	return path.Join("data", string(intervals[0]), strings.ToLower(pair))
-}
-
-func GetFileLen(pair string, intervals []Interval) int {
-	klines, _ := LoadKlinesFromFile(FileName(pair, intervals))
-	return len(klines)
-}
-
 
 // to CSV

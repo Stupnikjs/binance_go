@@ -24,15 +24,53 @@ const (
 	h4  Interval = "4h"
 )
 
-type Indicator string
+type Indicator struct {
+	Name   string
+	Data   string
+	Type   string
+	Params int
+}
 
-const (
-	PRICE Indicator = "PRICE"
-	RSI   Indicator = "RSI"
-)
+type mapIndicator map[string]func([]float64, int) []float64
 
 var Indicators = []Indicator{
-	PRICE, RSI,
+
+	{"RSI", "Price", "Coef", 14}, {
+		"EMA", "Price", "Avg", 9},
+}
+
+func InitMapIndic(ind []Indicator) mapIndicator {
+	var mapIndic mapIndicator = mapIndicator{
+		"RSI": analysis.RSIcalc,
+		"EMA": analysis.EMAcalc,
+		"SMA": analysis.SMAcalc,
+	}
+	return mapIndic
+
+}
+
+func BuildSuperArray(k []*binance_connector.KlinesResponse, indicators []Indicator, sliceLen int) [][]float64 {
+	var superArray [][]float64
+	close := CloseFromKlines(k)
+	vols := VolumeFromKlines(k)
+	index := len(close) - sliceLen + 1
+	superArray = append(superArray, close[index:])
+	superArray = append(superArray, vols[index:])
+	mapIndicator := InitMapIndic(indicators)
+	for i := 2; i < len(indicators)-1; i++ {
+		indicator := indicators[i-2]
+		var indicArr []float64
+		if indicator.Data == "Price" {
+			indicArr = mapIndicator[indicator.Name](close, indicator.Params)
+		}
+		if indicator.Data == "Volume" {
+			indicArr = mapIndicator[indicator.Name](vols, indicator.Params)
+		}
+
+		sliceIndex := len(indicArr) - sliceLen + 1
+		superArray[i] = indicArr[sliceIndex:]
+	}
+	return superArray
 }
 
 func IntervalToTime(interval Interval) (time.Duration, error) {
@@ -45,7 +83,7 @@ var Interv = []Interval{m1, m5, m15, m30, h1, h2, h4}
 
 type IndicatorMapFunc map[Indicator]func([]float64, int) []float64
 
-func GetRSI(klines []binance_connector.KlinesResponse, rsi_coef float64) []float64 {
+func GetRSI(klines []*binance_connector.KlinesResponse, rsi_coef float64) []float64 {
 	return analysis.RSIcalc(CloseFromKlines(klines), int(rsi_coef))
 }
 
@@ -56,27 +94,20 @@ func BuildKlineArrData(pair string, interval []Interval) []binance_connector.Kli
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	return kline
+	derefKline := DeRefKlinesArray(kline)
+	return derefKline
 }
 
-func FetchKlines(client *binance_connector.Client, pair string, intervals []Interval) ([]binance_connector.KlinesResponse, error) {
-	var arr []binance_connector.KlinesResponse
-	klines, err := client.NewKlinesService().
+func FetchKlines(client *binance_connector.Client, pair string, intervals []Interval) ([]*binance_connector.KlinesResponse, error) {
+	return client.NewKlinesService().
 		Symbol(pair).
 		Interval(string(intervals[0])).
 		Limit(1000).
 		Do(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	for _, i := range klines {
-		arr = append(arr, *i)
-	}
-	return arr, nil
+
 }
 
-func CloseFromKlines(klines []binance_connector.KlinesResponse) []float64 {
+func CloseFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	closingPrices := make([]float64, len(klines))
 	for i, kline := range klines {
 		f_close, err := strconv.ParseFloat(kline.Close, 64)
@@ -89,7 +120,7 @@ func CloseFromKlines(klines []binance_connector.KlinesResponse) []float64 {
 	return closingPrices
 }
 
-func VolumeFromKlines(klines []binance_connector.KlinesResponse) []float64 {
+func VolumeFromKlines(klines []*binance_connector.KlinesResponse) []float64 {
 	volumes := make([]float64, len(klines))
 	for i, kline := range klines {
 		f_vol, err := strconv.ParseFloat(kline.Volume, 64)

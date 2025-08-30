@@ -39,3 +39,25 @@ func main() {
 	}
 
 }
+
+
+
+func BuildSignalArray([]klines.Indicator, )
+
+
+func Loop(client *binance_connector.Client, pair string, interval []klines.Interval) {
+	signal := "crossOver"
+	for {
+		klines, _  := klines.FetchKlines(client, pair, interval)
+		// build two last items 
+		signalArrays := buildSignalArray()
+		if  
+
+	}
+	
+
+
+
+
+
+}
