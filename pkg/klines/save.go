@@ -135,8 +135,24 @@ func AppendNewData(client *binance_connector.Client, pair string, intervals []In
 	return nil
 }
 
-func CheckWholeHasNoTimeGap() {
-	_ = "hello"
+func CheckWholeHasNoTimeGap(pair string, interval Interval) error {
+	klines, err := LoadKlinesFromFile(path.Join("data", string(interval), strings.ToLower(pair)))
+	if err != nil {
+		return err
+	}
+	prevGap := klines[1].CloseTime - klines[0].CloseTime
+	for i := 1; i < len(klines)-1; i++ {
+
+		gap := klines[i+1].CloseTime - klines[i].CloseTime
+		if gap != prevGap {
+			fmt.Println(klines[i+1].CloseTime, klines[i].CloseTime)
+			return fmt.Errorf("gap supposed to be constant")
+		}
+		prevGap = gap
+
+	}
+	fmt.Println("no data gap found")
+	return nil
 }
 
 // to CSV
