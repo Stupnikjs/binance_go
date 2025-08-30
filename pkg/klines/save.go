@@ -12,9 +12,7 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-// AppendToFile opens a file in append mode and encodes the new data to the end.
-// This is more efficient than reading the entire file, appending, and then saving.
-// check time continuity
+
 func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interval Interval) error {
 	derefData := DeRefKlinesArray(data)
 	path := path.Join("data", strings.ToLower(string(interval)), pair)
@@ -77,8 +75,7 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 	return nil
 }
 
-// loadKlinesFromFile has been updated to read multiple gob-encoded objects
-// from the file stream until it reaches the end of the file (io.EOF).
+
 func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, error) {
 
 	file, err := os.Open(filename)
