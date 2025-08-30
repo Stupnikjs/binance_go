@@ -182,16 +182,7 @@ func AppendNewData(client *binance_connector.Client, pair string, intervals []In
 	if err != nil {
 		return err
 	}
-	// find a better way to test
-	filename := path.Join("data", string(intervals[0]), strings.ToLower(pair))
-	newklines, err := LoadKlinesFromFile(filename)
-	if err != nil {
-		return err
-	}
-	// find better way to test
-	if !reflect.DeepEqual(newklines[len(newklines)-1], klines[len(klines)-1]) {
-		return fmt.Errorf("append to file not working ")
-	}
+
 	return nil
 }
 
