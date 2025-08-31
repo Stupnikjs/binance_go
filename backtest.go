@@ -32,7 +32,7 @@ func (t *BackTestTrader) Buy() error {
 func (b *BackTestTrader) Loop(wg *sync.WaitGroup, tr chan TradeReport) error {
 	t := TradeReport{}
 	defer wg.Done()
-	for i := 0; i < len(b.Data); i++ {
+	for i := 0; i < len(b.Amounts); i++ {
 		// logic buy => fill tradeReport
 
 		// initTrade

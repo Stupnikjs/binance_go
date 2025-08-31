@@ -63,14 +63,15 @@ func BuildFeaturedKlinesArray(klines []*binance_connector.KlinesResponse, ind []
 	var featuresArray []FeaturedKlines
 	indicatorsArray := BuildIndicatorsMapArray(klines, ind)
 	klen := len(klines)
-	for i, k := range klines {
+	for i := 0; i < len(klines)-1; i++ {
 		featured := FeaturedKlines{
-			k,
+			klines[i],
 			make(map[string]float64),
 		}
 		for _, l := range ind {
-			if len(indicatorsArray[l.GetMapKey()])-klen+i > 0 {
-				featured.FeaturesMap[l.GetMapKey()] = indicatorsArray[l.GetMapKey()][i]
+			offset := klen - len(indicatorsArray[l.GetMapKey()])
+			if i >= offset {
+				featured.FeaturesMap[l.GetMapKey()] = indicatorsArray[l.GetMapKey()][i-offset]
 			}
 		}
 		featuresArray = append(featuresArray, featured)
