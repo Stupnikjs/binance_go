@@ -3,14 +3,12 @@ package main
 import (
 	"sync"
 
-	kli "github.com/Stupnikjs/binance_go/pkg/klines"
 	"github.com/google/uuid"
 )
 
 type BackTestTrader struct {
 	Pair     string
 	Amounts  []float64
-	Data     map[kli.Indicator][]float64
 	BuyCond  func()
 	SellCond func()
 }
