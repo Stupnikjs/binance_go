@@ -59,17 +59,22 @@ func BuildIndicatorsMapArray(klines []*binance_connector.KlinesResponse, ind []I
 	return mapper
 }
 
-func BuildFeaturedKlinesArray(klines []*binance_connector.KlinesResponse) []FeaturedKlines {
+func BuildFeaturedKlinesArray(klines []*binance_connector.KlinesResponse, ind []Indicator) []FeaturedKlines {
 	var featuresArray []FeaturedKlines
-	indicatorsArray := BuildIndicatorsMapArray(klines, Indicators)
-
-	for _, k := range klines {
+	indicatorsArray := BuildIndicatorsMapArray(klines, ind)
+	klen := len(klines)
+	for i, k := range klines {
 		featured := FeaturedKlines{
 			k,
 			make(map[string]float64),
 		}
-
+		for _, l := range ind {
+			if len(indicatorsArray[l.GetMapKey()])-klen+i > 0 {
+				featured.FeaturesMap[l.GetMapKey()] = indicatorsArray[l.GetMapKey()][i]
+			}
+		}
 		featuresArray = append(featuresArray, featured)
 
 	}
+	return featuresArray
 }
