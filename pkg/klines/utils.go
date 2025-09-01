@@ -75,3 +75,7 @@ func SliceOverLaping(old []*binance_connector.KlinesResponse, new []*binance_con
 	return new[index:], nil
 
 }
+
+func GetFilePathName(pair string, interval Interval) string {
+	return path.Join("data", string(interval), strings.ToLower(pair))
+}

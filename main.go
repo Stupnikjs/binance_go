@@ -32,14 +32,17 @@ func main() {
 
 	// Get API credentials from environment variable
 	k, err := klines.LoadKlinesFromFile(path.Join("data", string(klines.Interv[1]), strings.ToLower("BTCUSDC")))
+	// MARCHE PAS
 	if err != nil {
 		fmt.Println(err)
 	}
 	indic := []klines.Indicator{
 		{Name: "RSI", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.RSIcalc, Param: 14},
 	}
+	fmt.Println(k)
 	featured := klines.BuildFeaturedKlinesArray(k, indic)
-	fmt.Println(klines.FeaturedKlinesToString(featured[0]))
+	print(featured)
+	// fmt.Println(klines.FeaturedKlinesToCSV(klines.GetFilePathName("BTCUSDC", klines.Interv[1]), featured))
 }
 
 func SaveLastKlines(client *binance_connector.Client, intervals []klines.Interval) error {

@@ -172,8 +172,10 @@ func FeaturedKlinesToCSV(filename string, data []FeaturedKlines) error {
 	defer writer.Flush()
 	var headers []string
 	// Écrire les en-têtes de colonnes.
-	fmt.Println("here", &data[0].KlinesResponse)
-	val := reflect.ValueOf(&data[0].KlinesResponse)
+	first := data[0]
+
+	fmt.Println("here", first.KlinesResponse)
+	val := reflect.ValueOf(*data[0].KlinesResponse)
 	t := val.Type()
 	for i := 0; i < t.NumField(); i++ {
 
@@ -186,17 +188,6 @@ func FeaturedKlinesToCSV(filename string, data []FeaturedKlines) error {
 	fmt.Println(headers)
 	if err := writer.Write(headers); err != nil {
 		return fmt.Errorf("impossible d'écrire les en-têtes : %w", err)
-	}
-
-	for _, l := range data {
-		stringData := FeaturedKlinesToString(l)
-		_ = stringData
-		/*
-			if err := writer.Write(stringData); err != nil {
-				return fmt.Errorf("impossible d'écrire l'enregistrement : %w", err)
-			}
-
-		*/
 	}
 
 	return nil
