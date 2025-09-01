@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Stupnikjs/binance_go/pkg/analysis"
 	"github.com/Stupnikjs/binance_go/pkg/klines"
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/joho/godotenv"
@@ -30,15 +31,24 @@ func main() {
 	}
 
 	// Get API credentials from environment variable
-
-	for _, i := range PAIRS {
-		k, _ := klines.LoadKlinesFromFile(path.Join("data", string(klines.Interv[1]), strings.ToLower(i)))
-		Featured := klines.BuildFeaturedKlinesArray(k, klines.Indicators)
-		fmt.Println(Featured[len(Featured)-3:])
-		if err != nil {
-			fmt.Println(err)
-
-		}
+	k, err := klines.LoadKlinesFromFile(path.Join("data", string(klines.Interv[1]), strings.ToLower("BTCUSDC")))
+	if err != nil {
+		fmt.Println(err)
 	}
+	indic := []klines.Indicator{
+		{Name: "RSI", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.RSIcalc, Param: 14},
+	}
+	featured := klines.BuildFeaturedKlinesArray(k, indic)
+	fmt.Println(klines.FeaturedKlinesToString(featured[0]))
+}
 
+func SaveLastKlines(client *binance_connector.Client, intervals []klines.Interval) error {
+	for _, i := range PAIRS {
+		err := klines.AppendNewData(client, i, intervals)
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
 }

@@ -1,11 +1,13 @@
 package klines
 
 import (
+	"encoding/csv"
 	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 
 	binance_connector "github.com/binance/binance-connector-go"
@@ -156,3 +158,67 @@ func CheckWholeHasNoTimeGap(pair string, interval Interval) error {
 }
 
 // to CSV
+
+func FeaturedKlinesToCSV(filename string, data []FeaturedKlines) error {
+	// Créer le fichier.
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("impossible de créer le fichier %s : %w", filename, err)
+	}
+	defer file.Close()
+
+	// Initialiser un nouveau writer CSV.
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	var headers []string
+	// Écrire les en-têtes de colonnes.
+	fmt.Println("here", &data[0].KlinesResponse)
+	val := reflect.ValueOf(&data[0].KlinesResponse)
+	t := val.Type()
+	for i := 0; i < t.NumField(); i++ {
+
+		headers = append(headers, t.Field(i).Name)
+	}
+
+	for k := range data[0].FeaturesMap {
+		headers = append(headers, k)
+	}
+	fmt.Println(headers)
+	if err := writer.Write(headers); err != nil {
+		return fmt.Errorf("impossible d'écrire les en-têtes : %w", err)
+	}
+
+	for _, l := range data {
+		stringData := FeaturedKlinesToString(l)
+		_ = stringData
+		/*
+			if err := writer.Write(stringData); err != nil {
+				return fmt.Errorf("impossible d'écrire l'enregistrement : %w", err)
+			}
+
+		*/
+	}
+
+	return nil
+}
+
+/*
+func FeaturedKlinesToString(f FeaturedKlines) []string {
+	var arr []string
+	val := reflect.ValueOf(*f.KlinesResponse)
+	for i := 0; i < val.NumField()-1; i++ {
+		if val.Field(i).Kind() == reflect.String() {
+			arr = append(arr, val.Field(i).String())
+		}
+		if val.Type().Field(i) == "string" {
+			fmt.Println(val.Field(i))
+		}
+
+	}
+	for k := range f.FeaturesMap {
+		arr = append(arr, k)
+	}
+	return arr
+}
+
+*/
