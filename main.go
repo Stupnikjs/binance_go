@@ -31,12 +31,62 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	
 	k, err := GetSomeTestKlines()
 	if err != nil {
 		fmt.Println(err)
 	}
 	featured := klines.BuildFeaturedKlinesArray(k, indic)
-	klines.FeaturedKlinesToCSV("test.csv", featured)
+	
+	for 
+}
+
+
+
+
+func LoopPairs() {
+
+	for _, p := PAIRS {
+		PairLoop(p)
+	}
+
+
+
+}
+
+// 
+type Strategy {
+	Indicators []klines.Indicator
+	LoopFunc() func()
+}
+
+
+func PairLoop(pair string, ind []klines.Indicator) {
+	k := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[1:]))
+	featured := klines.BuildFeaturedKlinesArray(k, ind)
+	prev := false 
+	
+	trade := Trade{}
+	// ind[0] is short [1] is big
+	for i, f := range featured {
+		shortOverLong := f.FeaturesMap[ind[0].GetMapKey()] > f.FeaturesMap[ind[1].GetMapKey()]
+		if  shortOverLong && !prev {
+			trade = Trade{
+				BuyPrice: f.Close,
+				BuyTime: int(f.CloseTime), 
+			}
+			
+		} 
+		if !shortOverLong && !prev {
+			// sel signal 
+		}
+
+		prev := shortOverLong
+
+	}
+
+
+
 }
 
 func GetSomeTestKlines() ([]*binance_connector.KlinesResponse, error) {

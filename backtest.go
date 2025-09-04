@@ -3,25 +3,15 @@ package main
 import (
 	"sync"
 
-	"github.com/google/uuid"
+	"github.com/Stupnikjs/binance_go/pkg/klines"
 )
 
 type BackTestTrader struct {
 	Pair     string
 	Amounts  []float64
-	BuyCond  func()
-	SellCond func()
-}
-
-type TradeReport struct {
-	TradeId    uuid.UUID
-	Asset      string
-	Amount     float64
-	TradeOver  bool
-	Buy_price  float64
-	Buy_time   int64
-	Sell_price float64
-	Sell_time  int64
+	BuyCond  func(klines.FeaturedKlines, bool) bool
+	SellCond func(klines.FeaturedKlines, bool) bool
+	Curr     *Trade
 }
 
 // Buy simulates a buy order.
@@ -29,8 +19,7 @@ func (t *BackTestTrader) Buy() error {
 
 	return nil
 }
-func (b *BackTestTrader) Loop(wg *sync.WaitGroup, tr chan TradeReport) error {
-	t := TradeReport{}
+func (b *BackTestTrader) Loop(wg *sync.WaitGroup, tr chan Trade) error {
 	defer wg.Done()
 	for i := 0; i < len(b.Amounts); i++ {
 		// logic buy => fill tradeReport
@@ -48,6 +37,18 @@ func (b *BackTestTrader) Loop(wg *sync.WaitGroup, tr chan TradeReport) error {
 
 func (b *BackTestTrader) SetStop(price float64) error {
 	return nil
+}
+
+/*
+
+func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev bool) *Trade {
+	if b.SellCond(feature, prev) && b.Curr != nil {
+		b.Sell()
+		return b.Curr
+	}
+	if b.BuyCond() && b.Curr == nil {
+		b.Buy()
+	}
 }
 
 /*

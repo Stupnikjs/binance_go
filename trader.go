@@ -1,5 +1,7 @@
 package main
 
+import "github.com/google/uuid"
+
 var PAIRS = []string{
 	"BTCUSDC", "ETHUSDC", "LINKUSDC", "ALGOUSDC", "HBARUSDC", "SOLUSDC", "AAVEUSDC"}
 
@@ -8,11 +10,11 @@ type ITTrader interface {
 	Sell() error
 }
 
-type Signal struct {
-	Type       string
-	Indicators [][]float64
-	Position   int
-	Prev       bool
-}
-
 // Exemple
+type Trade struct {
+	Id        uuid.UUID
+	BuyPrice  float64
+	BuyTime   int
+	SellPrice float64
+	SellTime  int
+}
