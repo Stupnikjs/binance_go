@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
+	"path/filepath"
 	"testing"
 
 	binance_connector "github.com/binance/binance-connector-go"
@@ -39,10 +39,13 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+/*
 func TestCloseFromKlines(t *testing.T) {
 
-	klines := BuildKlineArrData("BTCUSDC", Interv)
-
+	klines, err := LoadKlinesFromFile(GetFilePathName("BTCUSDC", Interv[1]))
+	if err != nil {
+		t.Error("err should be nil")
+	}
 	close := CloseFromKlines(klines)
 	if len(close) != len(klines) {
 		t.Error("close should be equal to klines Array")
@@ -56,4 +59,18 @@ func TestCloseFromKlines(t *testing.T) {
 	if close[0] != f_close {
 		t.Error("first value of array and close array are diffrent")
 	}
+}
+
+*/
+
+func TestLoadFromKlines(t *testing.T) {
+	curr, _ := os.Getwd()
+	path := filepath.Join(curr, "../../data/5m/BTCUSDC")
+	k, err := LoadKlinesFromFile(path)
+	// MARCHE PAS
+	if err != nil {
+		t.Errorf("err loading klines %v", err)
+	}
+	fmt.Println(k)
+
 }

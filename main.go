@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
-	"strings"
 
 	"github.com/Stupnikjs/binance_go/pkg/analysis"
 	"github.com/Stupnikjs/binance_go/pkg/klines"
 	binance_connector "github.com/binance/binance-connector-go"
 	"github.com/joho/godotenv"
 )
+
+var indic = []klines.Indicator{
+	{Name: "RSI", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.RSIcalc, Param: 14},
+}
 
 func main() {
 
@@ -29,20 +31,16 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	// Get API credentials from environment variable
-	k, err := klines.LoadKlinesFromFile(path.Join("data", string(klines.Interv[1]), strings.ToLower("BTCUSDC")))
-	// MARCHE PAS
+	k, err := GetSomeTestKlines()
 	if err != nil {
 		fmt.Println(err)
 	}
-	indic := []klines.Indicator{
-		{Name: "RSI", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.RSIcalc, Param: 14},
-	}
-	fmt.Println(k)
 	featured := klines.BuildFeaturedKlinesArray(k, indic)
-	print(featured)
-	// fmt.Println(klines.FeaturedKlinesToCSV(klines.GetFilePathName("BTCUSDC", klines.Interv[1]), featured))
+	klines.FeaturedKlinesToCSV("test.csv", featured)
+}
+
+func GetSomeTestKlines() ([]*binance_connector.KlinesResponse, error) {
+	return klines.LoadKlinesFromFile(klines.GetFilePathName("ALGOUSDC", klines.Interv[1]))
 }
 
 func SaveLastKlines(client *binance_connector.Client, intervals []klines.Interval) error {

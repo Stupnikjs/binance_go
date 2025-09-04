@@ -3,23 +3,10 @@ package klines
 import (
 	"context"
 	"fmt"
-	"path"
 	"strconv"
-	"strings"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
-
-func BuildKlineArrData(pair string, interval []Interval) []*binance_connector.KlinesResponse {
-
-	path := path.Join("data", string(interval[0]), strings.ToLower(pair))
-	kline, err := LoadKlinesFromFile(path)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return kline
-}
 
 func FetchKlines(client *binance_connector.Client, pair string, intervals []Interval) ([]*binance_connector.KlinesResponse, error) {
 	return client.NewKlinesService().

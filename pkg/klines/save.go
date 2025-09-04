@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
-	"reflect"
+	"strconv"
 	"strings"
 
 	binance_connector "github.com/binance/binance-connector-go"
@@ -76,7 +76,7 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 }
 
 func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, error) {
-
+	fmt.Println(filename)
 	file, err := os.Open(filename)
 	if os.IsNotExist(err) {
 		return []*binance_connector.KlinesResponse{}, err
@@ -103,6 +103,7 @@ func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, e
 		// Append the newly decoded data to the slice of all data.
 		allData = append(allData, data...)
 	}
+	fmt.Println(allData)
 	var refData []*binance_connector.KlinesResponse
 	for _, k := range allData {
 		refData = append(refData, &k)
@@ -172,44 +173,36 @@ func FeaturedKlinesToCSV(filename string, data []FeaturedKlines) error {
 	defer writer.Flush()
 	var headers []string
 	// Écrire les en-têtes de colonnes.
-	first := data[0]
 
-	fmt.Println("here", first.KlinesResponse)
-	val := reflect.ValueOf(*data[0].KlinesResponse)
-	t := val.Type()
-	for i := 0; i < t.NumField(); i++ {
-
-		headers = append(headers, t.Field(i).Name)
-	}
+	headers = append(headers, "price")
+	headers = append(headers, "volume")
+	headers = append(headers, "closing_time")
 
 	for k := range data[0].FeaturesMap {
 		headers = append(headers, k)
 	}
-	fmt.Println(headers)
+
 	if err := writer.Write(headers); err != nil {
 		return fmt.Errorf("impossible d'écrire les en-têtes : %w", err)
+	}
+
+	for _, k := range data {
+		stringed := FeaturedKlinesToString(k)
+		writer.Write(stringed)
 	}
 
 	return nil
 }
 
-/*
 func FeaturedKlinesToString(f FeaturedKlines) []string {
 	var arr []string
-	val := reflect.ValueOf(*f.KlinesResponse)
-	for i := 0; i < val.NumField()-1; i++ {
-		if val.Field(i).Kind() == reflect.String() {
-			arr = append(arr, val.Field(i).String())
-		}
-		if val.Type().Field(i) == "string" {
-			fmt.Println(val.Field(i))
-		}
-
-	}
-	for k := range f.FeaturesMap {
-		arr = append(arr, k)
+	arr = append(arr, f.Close)
+	arr = append(arr, f.Volume)
+	strTime := strconv.Itoa(int(f.CloseTime))
+	arr = append(arr, strTime)
+	for _, v := range f.FeaturesMap {
+		str := strconv.FormatFloat(v, 'f', 3, 64)
+		arr = append(arr, str)
 	}
 	return arr
 }
-
-*/
