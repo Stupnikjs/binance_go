@@ -67,6 +67,7 @@ func PairLoop(pair string, ind []klines.Indicator) {
 	prev := false 
 	
 	trade := Trade{}
+	trades := []Trade{}
 	// ind[0] is short [1] is big
 	for i, f := range featured {
 		shortOverLong := f.FeaturesMap[ind[0].GetMapKey()] > f.FeaturesMap[ind[1].GetMapKey()]
@@ -79,6 +80,7 @@ func PairLoop(pair string, ind []klines.Indicator) {
 		} 
 		if !shortOverLong && !prev {
 			// sel signal 
+			
 		}
 
 		prev := shortOverLong
