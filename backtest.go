@@ -8,9 +8,6 @@ import (
 
 type BackTestTrader struct {
 	Pair     string
-	Amounts  []float64
-	BuyCond  func(klines.FeaturedKlines, bool) bool
-	SellCond func(klines.FeaturedKlines, bool) bool
 	Curr     *Trade
 }
 
@@ -56,13 +53,9 @@ func BackTestTradesToResult(trades []Trade) BackTestResult() {
 
 
 func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev *bool) *Trade {
-	if b.SellCond(feature, *prev) && b.Curr != nil {
-		b.Sell()
-		return b.Curr
-	}
-	if b.BuyCond(feature, *prev) && b.Curr == nil {
-		b.Buy()
-	}
+	// for EMA cross over 
+	
+	
 	
 }
 
@@ -89,4 +82,4 @@ func RunBackTest() error {
 }
 
 
-*/
+
