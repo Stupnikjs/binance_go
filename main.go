@@ -55,10 +55,6 @@ func LoopPairs() {
 }
 
 // 
-type Strategy {
-	Indicators []klines.Indicator
-	LoopFunc() func()
-}
 
 
 func PairLoop(pair string, ind []klines.Indicator) {
@@ -68,23 +64,14 @@ func PairLoop(pair string, ind []klines.Indicator) {
 	
 	trade := Trade{}
 	trades := []Trade{}
+	b := InitBackTest(trade,pair,ind) 
 	// ind[0] is short [1] is big
 	for i, f := range featured {
-		shortOverLong := f.FeaturesMap[ind[0].GetMapKey()] > f.FeaturesMap[ind[1].GetMapKey()]
-		if  shortOverLong && !prev {
-			trade = Trade{
-				BuyPrice: f.Close,
-				BuyTime: int(f.CloseTime), 
-			}
-			
-		} 
-		if !shortOverLong && !prev {
-			// sel signal 
-			
+		// t := b.Iterate()
+		// if t != nil {
+		trades = append(trades, t)
 		}
-
-		prev := shortOverLong
-
+    
 	}
 
 
