@@ -39,6 +39,20 @@ func (b *BackTestTrader) SetStop(price float64) error {
 	return nil
 }
 
+type BackTestResult {
+	Pair string 
+	Ratio float64
+	
+}
+
+func BackTestTradesToResult(trades []Trade) BackTestResult() {
+	ratio := 1.0
+	for _ , t := range trades {
+		ratio = (t.SellPrice - t.BuyPrice) / t.BuyPrice * ratio  
+		}
+	return initBackTestResult(pair, ratio) 
+}
+
 /*
 
 func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev bool) *Trade {
