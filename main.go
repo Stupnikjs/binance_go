@@ -38,7 +38,7 @@ func main() {
 	}
 	featured := klines.BuildFeaturedKlinesArray(k, indic)
 	
-	for 
+
 }
 
 
