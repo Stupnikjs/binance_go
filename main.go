@@ -44,17 +44,6 @@ func main() {
 
 
 
-func LoopPairs() {
-
-	for _, p := PAIRS {
-		PairLoop(p)
-	}
-
-
-
-}
-
-// 
 
 
 func PairLoop(pair string, ind []klines.Indicator) {
@@ -67,8 +56,8 @@ func PairLoop(pair string, ind []klines.Indicator) {
 	b := InitBackTest(trade,pair,ind) 
 	// ind[0] is short [1] is big
 	for i, f := range featured {
-		// t := b.Iterate()
-		// if t != nil {
+		t := b.Iterate(f,*prev)
+		if t != nil {
 		trades = append(trades, t)
 		}
     
