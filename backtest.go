@@ -54,7 +54,17 @@ func BackTestTradesToResult(trades []Trade) BackTestResult() {
 
 func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev *bool) *Trade {
 	// for EMA cross over 
-	
+	shortOverLong := feature.FeaturesMap[b.Indicators[0].GetKey()] > feature.FeaturesMap[b.Indicators[1].GetKey()]
+	if shortOverLong && *prev {
+		// Buy Logic
+		b.Buy()
+		b.Curr = intitTrade()
+		  }
+	if !shortOverLong && !*prev  {
+		// Sell Logic 
+		b.Sell()
+		return b.Curr
+		}
 	
 	
 }
