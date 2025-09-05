@@ -53,19 +53,20 @@ func BackTestTradesToResult(trades []Trade) BackTestResult() {
 	return initBackTestResult(pair, ratio) 
 }
 
-/*
 
-func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev bool) *Trade {
-	if b.SellCond(feature, prev) && b.Curr != nil {
+
+func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev *bool) *Trade {
+	if b.SellCond(feature, *prev) && b.Curr != nil {
 		b.Sell()
 		return b.Curr
 	}
-	if b.BuyCond() && b.Curr == nil {
+	if b.BuyCond(feature, *prev) && b.Curr == nil {
 		b.Buy()
 	}
+	
 }
 
-/*
+
 func RunBackTest() error {
 	var wg sync.WaitGroup
 	reports := []TradeReport{}
