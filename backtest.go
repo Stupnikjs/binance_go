@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/Stupnikjs/binance_go/pkg/klines"
@@ -47,6 +48,7 @@ func BackTestTradesToResult(trades []Trade) BackTestResult {
 	ratio := 1.0
 	for _, t := range trades {
 		ratio = (t.SellPrice - t.BuyPrice) / t.BuyPrice * ratio
+		fmt.Println(ratio)
 	}
 	return InitBackTestResult()
 }
@@ -69,5 +71,6 @@ func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev *bool) *Tra
 		b.Sell()
 		return b.Curr
 	}
+	*prev = shortOverLong
 	return nil
 }

@@ -76,7 +76,6 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 }
 
 func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, error) {
-	fmt.Println(filename)
 	file, err := os.Open(filename)
 	if os.IsNotExist(err) {
 		return []*binance_connector.KlinesResponse{}, err
@@ -103,11 +102,11 @@ func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, e
 		// Append the newly decoded data to the slice of all data.
 		allData = append(allData, data...)
 	}
-	fmt.Println(allData)
 	var refData []*binance_connector.KlinesResponse
 	for _, k := range allData {
 		refData = append(refData, &k)
 	}
+
 	return refData, nil
 }
 
@@ -154,7 +153,6 @@ func CheckWholeHasNoTimeGap(pair string, interval Interval) error {
 		prevGap = gap
 
 	}
-	fmt.Println("no data gap found")
 	return nil
 }
 

@@ -12,7 +12,8 @@ import (
 )
 
 var indic = []klines.Indicator{
-	{Name: "RSI", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.RSIcalc, Param: 14},
+	{Name: "EMA_short", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.EMAcalc, Param: 9},
+	{Name: "EMA_long", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.EMAcalc, Param: 15},
 }
 
 func main() {
@@ -31,23 +32,36 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	k, err := GetSomeTestKlines()
+	err = SaveLastKlines(client, klines.Interv[1:])
 	if err != nil {
 		fmt.Println(err)
 	}
-	_ = klines.BuildFeaturedKlinesArray(k, indic)
-	err = SaveLastKlines(client, klines.Interv[1:])
-	fmt.Println(err)
+
+}
+
+func TestPairLoop() {
+	tradeChan := make(chan Trade, 100)
+	go PairLoop("BTCUSDC", indic, tradeChan)
+	trades := []Trade{}
+
+	defer func() {
+		for t := range tradeChan {
+			trades = append(trades, t)
+
+		}
+		result := BackTestTradesToResult(trades)
+		fmt.Println(result)
+	}()
 }
 
 func PairLoop(pair string, ind []klines.Indicator, tradeChan chan Trade) {
-	k, _ := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[1:]))
+
+	k, _ := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv))
 	featured := klines.BuildFeaturedKlinesArray(k, ind)
+	fmt.Println(len(featured))
 	prev := false
 
 	b := InitBackTestTrader(pair, ind)
-	// ind[0] is short [1] is big
 	for _, f := range featured {
 		t := b.Iterate(f, &prev)
 		if t != nil {
@@ -55,6 +69,7 @@ func PairLoop(pair string, ind []klines.Indicator, tradeChan chan Trade) {
 		}
 
 	}
+	close(tradeChan)
 
 }
 
