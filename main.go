@@ -41,18 +41,17 @@ func main() {
 	fmt.Println(err)
 }
 
-func PairLoop(pair string, ind []klines.Indicator) {
-	k := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[1:]))
+func PairLoop(pair string, ind []klines.Indicator, tradeChan chan Trade) {
+	k, _ := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[1:]))
 	featured := klines.BuildFeaturedKlinesArray(k, ind)
 	prev := false
 
-	trades := []Trade{}
 	b := InitBackTestTrader(pair, ind)
 	// ind[0] is short [1] is big
-	for i, f := range featured {
+	for _, f := range featured {
 		t := b.Iterate(f, &prev)
 		if t != nil {
-			trades = append(trades, *t)
+			tradeChan <- *t
 		}
 
 	}

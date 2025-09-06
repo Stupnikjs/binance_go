@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/Stupnikjs/binance_go/pkg/klines"
 )
 
@@ -55,7 +57,11 @@ func (b *BackTestTrader) Iterate(feature klines.FeaturedKlines, prev *bool) *Tra
 	if shortOverLong && *prev {
 		// Buy Logic
 		b.Buy()
-		tradeNew := InitTrade()
+		f_price, err := strconv.ParseFloat(feature.Close, 64)
+		if err != nil {
+			panic(err)
+		}
+		tradeNew := InitTrade(f_price, int(feature.CloseTime))
 		b.Curr = &tradeNew
 	}
 	if !shortOverLong && !*prev {
