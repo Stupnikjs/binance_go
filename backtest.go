@@ -29,6 +29,14 @@ type BackTestResult struct {
 	Ratio float64
 }
 
+func InitBackTestTrader(pair string, indicators []klines.Indicator) BackTestTrader {
+	return BackTestTrader{
+		Pair:       pair,
+		Indicators: indicators,
+		Curr:       nil,
+	}
+}
+
 func InitBackTestResult() BackTestResult {
 	return BackTestResult{}
 }

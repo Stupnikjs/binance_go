@@ -19,6 +19,10 @@ type Trade struct {
 	SellTime  int
 }
 
-func InitTrade() Trade {
-	return Trade{}
+func InitTrade(buyPrice float64, buyTime int) Trade {
+	return Trade{
+		Id:       uuid.New(),
+		BuyPrice: buyPrice,
+		BuyTime:  buyTime,
+	}
 }
