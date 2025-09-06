@@ -31,41 +31,38 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	
+
 	k, err := GetSomeTestKlines()
 	if err != nil {
 		fmt.Println(err)
 	}
-	featured := klines.BuildFeaturedKlinesArray(k, indic)
-	
-
+	_ = klines.BuildFeaturedKlinesArray(k, indic)
+	err = SaveLastKlines(client, klines.Interv[1:])
+	fmt.Println(err)
 }
 
-
-
-
-
-
+/*
 func PairLoop(pair string, ind []klines.Indicator) {
 	k := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[1:]))
 	featured := klines.BuildFeaturedKlinesArray(k, ind)
-	prev := false 
-	
+	prev := false
+
 	trade := Trade{}
 	trades := []Trade{}
-	b := InitBackTest(trade,pair,ind) 
+	b := InitBackTest(trade,pair,ind)
 	// ind[0] is short [1] is big
 	for i, f := range featured {
 		t := b.Iterate(f,*prev)
 		if t != nil {
 		trades = append(trades, t)
 		}
-    
+
 	}
 
 
 
 }
+*/
 
 func GetSomeTestKlines() ([]*binance_connector.KlinesResponse, error) {
 	return klines.LoadKlinesFromFile(klines.GetFilePathName("ALGOUSDC", klines.Interv[1]))

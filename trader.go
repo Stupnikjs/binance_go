@@ -18,3 +18,7 @@ type Trade struct {
 	SellPrice float64
 	SellTime  int
 }
+
+func InitTrade() Trade {
+	return Trade{}
+}
