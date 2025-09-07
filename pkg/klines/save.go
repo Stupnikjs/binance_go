@@ -13,7 +13,7 @@ import (
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interval Interval) error {
+func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interval Interval) (int, error) {
 	derefData := DeRefKlinesArray(data)
 	path := path.Join("data", strings.ToLower(string(interval)), pair)
 
@@ -23,7 +23,7 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 	if os.IsNotExist(err) {
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			return fmt.Errorf("could not open file for writing: %w", err)
+			return 0, fmt.Errorf("could not open file for writing: %w", err)
 		}
 		defer file.Close()
 
@@ -32,27 +32,27 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 
 		// Encode the combined data in one go.
 		if err := encoder.Encode(derefData); err != nil {
-			return fmt.Errorf("could not encode data: %w", err)
+			return 0, fmt.Errorf("could not encode data: %w", err)
 		}
-		fmt.Println(len(derefData))
-		return nil
+
+		return len(derefData), nil
 
 	}
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 	// Combine the existing data with the new data.
 	// We're performing the data overlap and gap checks here on the combined data.
 	if IsDataOverlap(klines, data) {
 		data, err = SliceOverLaping(klines, data)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	if IsThereDataGap(klines, data) {
-		return fmt.Errorf("there is a data gap")
+		return 0, fmt.Errorf("there is a data gap")
 	}
 
 	combinedData := append(klines, data...)
@@ -60,7 +60,7 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("could not open file for writing: %w", err)
+		return 0, fmt.Errorf("could not open file for writing: %w", err)
 	}
 	defer file.Close()
 
@@ -69,10 +69,10 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 
 	// Encode the combined data in one go.
 	if err := encoder.Encode(derefCombined); err != nil {
-		return fmt.Errorf("could not encode data: %w", err)
+		return 0, fmt.Errorf("could not encode data: %w", err)
 	}
-	fmt.Println(len(derefCombined))
-	return nil
+
+	return len(derefCombined), nil
 }
 
 func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, error) {
@@ -107,7 +107,6 @@ func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, e
 		refData = append(refData, &k)
 	}
 
-	fmt.Printf("%d klines loaded \n", len(refData))
 	return refData, nil
 }
 
@@ -130,11 +129,11 @@ func AppendNewData(client *binance_connector.Client, pair string, intervals []In
 	if err != nil {
 		return err
 	}
-	err = AppendToFile(klines, pair, intervals[0])
+	length, err := AppendToFile(klines, pair, intervals[0])
 	if err != nil {
 		return err
 	}
-
+	fmt.Printf("%s file has %d lines \n", pair, length)
 	return nil
 }
 

@@ -92,6 +92,7 @@ func SaveLastKlines(client *binance_connector.Client, intervals []klines.Interva
 		if err != nil {
 			return err
 		}
+		fmt.Println("no time gap")
 	}
 
 	return nil
