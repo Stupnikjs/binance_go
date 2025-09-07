@@ -84,8 +84,7 @@ func GetSomeTestKlines() ([]*binance_connector.KlinesResponse, error) {
 
 func SaveLastKlines(client *binance_connector.Client, intervals []klines.Interval) error {
 	for _, i := range PAIRS {
-		length, err := klines.AppendNewData(client, i, intervals)
-		fmt.Printf("%s has %d lines \n", i, length)
+		err := klines.AppendNewData(client, i, intervals)
 		if err != nil {
 			return err
 		}

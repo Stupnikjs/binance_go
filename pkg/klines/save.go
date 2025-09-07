@@ -34,7 +34,7 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 		if err := encoder.Encode(derefData); err != nil {
 			return fmt.Errorf("could not encode data: %w", err)
 		}
-
+		fmt.Println(len(derefData))
 		return nil
 
 	}
@@ -71,7 +71,7 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 	if err := encoder.Encode(derefCombined); err != nil {
 		return fmt.Errorf("could not encode data: %w", err)
 	}
-
+	fmt.Println(len(derefCombined))
 	return nil
 }
 
