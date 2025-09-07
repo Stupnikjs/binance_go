@@ -107,6 +107,7 @@ func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, e
 		refData = append(refData, &k)
 	}
 
+	fmt.Printf("%d klines loaded \n", len(refData))
 	return refData, nil
 }
 
