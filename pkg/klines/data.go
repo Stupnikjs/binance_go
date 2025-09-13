@@ -26,23 +26,25 @@ func LoadKlinesFromFile(filename string) ([]*binance_connector.KlinesResponse, e
 	for {
 		var data []binance_connector.KlinesResponse
 		if err := decoder.Decode(&data); err != nil {
-			// If we reach the end of the file, break the loop.
 			if err == io.EOF {
 				break
 			}
-			// For any other error, return the error.
 			return nil, fmt.Errorf("could not decode data: %w", err)
 		}
-		// Append the newly decoded data to the slice of all data.
-
 		allData = append(allData, data...)
 	}
-	var refData []*binance_connector.KlinesResponse
-	for _, k := range allData {
-		refData = append(refData, &k)
-	}
+	refData := ReRefKlines(allData)
 	fmt.Printf("%d klines loaded from %s \n ", len(refData), filename)
 	return refData, nil
+}
+
+func ReRefKlines(deRefed []binance_connector.KlinesResponse) []*binance_connector.KlinesResponse {
+	var refData []*binance_connector.KlinesResponse
+	for _, k := range deRefed {
+		refData = append(refData, &k)
+	}
+
+	return refData
 }
 
 func IsDataOverlap(old []*binance_connector.KlinesResponse, new []*binance_connector.KlinesResponse) bool {

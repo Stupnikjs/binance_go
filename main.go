@@ -32,28 +32,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	SaveLastKlines(client, klines.Interv[1:])
-	for _, p := range PAIRS {
-		filename := klines.GetFilePathName(p, klines.Interv[1])
-
-		kl, err := klines.LoadKlinesFromFile(filename)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(klines.DeRefKlinesArray(kl)[1])
-
-		features := klines.BuildFeaturedKlinesArray(kl, indic)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(features[0])
-
-		err = klines.FeaturedKlinesToCSV(filename, features)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-	}
+	TestPairLoop()
 }
 
 func TestPairLoop() {
@@ -73,13 +52,13 @@ func TestPairLoop() {
 
 func PairLoop(pair string, ind []klines.Indicator, tradeChan chan Trade) {
 
-	k, _ := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv))
+	k, _ := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[2:]))
 	featured := klines.BuildFeaturedKlinesArray(k, ind)
 	prev := false
 
 	b := InitBackTestTrader(pair, ind)
-	for _, f := range featured {
-		t := b.Iterate(f, &prev)
+	for i, f := range featured {
+		// hard code everything
 		if t != nil {
 			tradeChan <- *t
 		}

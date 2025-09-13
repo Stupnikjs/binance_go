@@ -15,9 +15,9 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 	derefData := DeRefKlinesArray(data)
 	path := path.Join("data", strings.ToLower(string(interval)), pair)
 
-	// Load existing data from the file first.
-	// This function handles opening, decoding, and closing the file.
 	klines, err := LoadKlinesFromFile(path)
+
+	// case where file is created yet
 	if os.IsNotExist(err) {
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
@@ -40,8 +40,7 @@ func AppendToFile(data []*binance_connector.KlinesResponse, pair string, interva
 	if err != nil {
 		return 0, err
 	}
-	// Combine the existing data with the new data.
-	// We're performing the data overlap and gap checks here on the combined data.
+
 	if IsDataOverlap(klines, data) {
 		data, err = SliceOverLaping(klines, data)
 		if err != nil {
