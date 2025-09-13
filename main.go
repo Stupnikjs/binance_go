@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/Stupnikjs/binance_go/pkg/analysis"
 	"github.com/Stupnikjs/binance_go/pkg/klines"
@@ -33,15 +32,28 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	SaveLastKlines(client, klines.Interv[1:])
+	for _, p := range PAIRS {
+		filename := klines.GetFilePathName(p, klines.Interv[1])
 
-	for {
-		err = SaveLastKlines(client, klines.Interv[1:])
+		kl, err := klines.LoadKlinesFromFile(filename)
 		if err != nil {
 			fmt.Println(err)
 		}
-		time.Sleep(12 * time.Hour)
-	}
+		fmt.Println(klines.DeRefKlinesArray(kl)[1])
 
+		features := klines.BuildFeaturedKlinesArray(kl, indic)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(features[0])
+
+		err = klines.FeaturedKlinesToCSV(filename, features)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+	}
 }
 
 func TestPairLoop() {
@@ -69,7 +81,6 @@ func PairLoop(pair string, ind []klines.Indicator, tradeChan chan Trade) {
 	for _, f := range featured {
 		t := b.Iterate(f, &prev)
 		if t != nil {
-			fmt.Println(t)
 			tradeChan <- *t
 		}
 

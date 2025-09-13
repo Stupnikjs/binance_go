@@ -2,6 +2,7 @@ package klines
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/Stupnikjs/binance_go/pkg/analysis"
 	binance_connector "github.com/binance/binance-connector-go"
@@ -78,4 +79,17 @@ func BuildFeaturedKlinesArray(klines []*binance_connector.KlinesResponse, ind []
 
 	}
 	return featuresArray
+}
+
+func FeaturedKlinesToString(f FeaturedKlines) []string {
+	var arr []string
+	arr = append(arr, f.Close)
+	arr = append(arr, f.Volume)
+	strTime := strconv.Itoa(int(f.CloseTime))
+	arr = append(arr, strTime)
+	for _, v := range f.FeaturesMap {
+		str := strconv.FormatFloat(v, 'f', 3, 64)
+		arr = append(arr, str)
+	}
+	return arr
 }
