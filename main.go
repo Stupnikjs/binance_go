@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/Stupnikjs/binance_go/pkg/analysis"
 	"github.com/Stupnikjs/binance_go/pkg/klines"
 	binance_connector "github.com/binance/binance-connector-go"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
 var indic = []klines.Indicator{
-	{Name: "EMA_short", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.EMAcalc, Param: 9},
-	{Name: "EMA_long", Interval: klines.Interv[1], Type: "Price", Calculator: analysis.EMAcalc, Param: 15},
+	{Name: "EMA_short", Interval: klines.Interv[2], Type: "Price", Calculator: analysis.EMAcalc, Param: 5},
+	{Name: "EMA_long", Interval: klines.Interv[2], Type: "Price", Calculator: analysis.EMAcalc, Param: 15},
+	{Name: "RSI", Interval: klines.Interv[2], Type: "Price", Calculator: analysis.EMAcalc, Param: 14},
 }
 
 func main() {
@@ -32,39 +35,81 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	TestPairLoop()
-}
 
-func TestPairLoop() {
-	tradeChan := make(chan Trade, 100)
-	go PairLoop("BTCUSDC", indic, tradeChan)
-	trades := []Trade{}
+	bigArr := klines.GetEMAIndicatorsArray()
 
-	defer func() {
-		for t := range tradeChan {
-			trades = append(trades, t)
-
-		}
-		result := BackTestTradesToResult(trades)
-		fmt.Println(result)
-	}()
-}
-
-func PairLoop(pair string, ind []klines.Indicator, tradeChan chan Trade) {
-
-	k, _ := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[2:]))
-	featured := klines.BuildFeaturedKlinesArray(k, ind)
-	prev := false
-
-	b := InitBackTestTrader(pair, ind)
-	for i, f := range featured {
-		// hard code everything
-		if t != nil {
-			tradeChan <- *t
+	max := 1.0
+	for _, arr := range bigArr {
+		ratio := GetAvgRatio(arr)
+		if ratio > max {
+			fmt.Println(arr, ratio)
+			max = ratio
 		}
 
 	}
+
+}
+
+func GetAvgRatio(ind []klines.Indicator) (result float64) {
+
+	tradeChan := make(chan Trade, 200)
+	var wg sync.WaitGroup
+	wg.Add(len(PAIRS))
+
+	for _, p := range PAIRS {
+		go EMASTRAT(p, indic, &wg, tradeChan)
+	}
+	rr := []Trade{}
+
+	wg.Wait()
 	close(tradeChan)
+
+	for t := range tradeChan {
+
+		rr = append(rr, t)
+	}
+	if len(rr) < 1 {
+		return 1
+	} else {
+		sum := 0.0
+		for _, r := range rr {
+			sum += r.Ratio()
+		}
+		result = sum / float64(len(rr))
+	}
+
+	return result
+
+}
+
+func EMASTRAT(pair string, ind []klines.Indicator, wg *sync.WaitGroup, tradeChan chan Trade) {
+	defer wg.Done()
+	k, _ := klines.LoadKlinesFromFile(klines.FileName(pair, klines.Interv[2:]))
+	featured := klines.BuildFeaturedKlinesArray(k, ind)
+	prev := false
+	currTrade := Trade{}
+	for _, f := range featured {
+		shortOverLong, err := f.EMAShortOverLong(ind)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Buy
+		if shortOverLong && !prev && currTrade.BuyTime == 0 {
+			fmt.Println(f.FeaturesMap[ind[2].GetMapKey()])
+			currTrade = Trade{
+				Id:       uuid.New(),
+				BuyPrice: f.FloatClose(),
+				BuyTime:  int(f.CloseTime),
+			}
+		}
+		if !shortOverLong && prev && currTrade.BuyTime != 0 {
+			currTrade.SellPrice = f.FloatClose()
+			currTrade.SellTime = int(f.CloseTime)
+			tradeChan <- currTrade
+			currTrade = Trade{}
+		}
+		prev = shortOverLong
+	}
 
 }
 

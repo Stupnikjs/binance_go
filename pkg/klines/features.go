@@ -2,7 +2,9 @@ package klines
 
 import (
 	"fmt"
+	"log"
 	"strconv"
+	"strings"
 
 	"github.com/Stupnikjs/binance_go/pkg/analysis"
 	binance_connector "github.com/binance/binance-connector-go"
@@ -39,22 +41,39 @@ type FeaturedKlines struct {
 	FeaturesMap map[string]float64
 }
 
-var Indicators = []Indicator{
-	{"RSI", m5, "Price", analysis.RSIcalc, 14},
-	{"EMA", m5, "Price", analysis.EMAcalc, 14},
+func GetEMAIndicatorsArray() [][]Indicator {
+	var arr [][]Indicator
+
+	for i := range 30 {
+
+		for j := range 100 {
+			if i < j && i != 0 && j != 0 {
+				ar := []Indicator{
+					{Name: "EMA", Interval: m15, Type: "Price", Calculator: analysis.EMAcalc, Param: i},
+					{Name: "EMA", Interval: m15, Type: "Price", Calculator: analysis.EMAcalc, Param: j},
+					{Name: "RSI", Interval: m15, Type: "Price", Calculator: analysis.RSIcalc, Param: 14},
+				}
+				arr = append(arr, ar)
+			}
+		}
+	}
+	return arr
+
 }
 
 func BuildIndicatorsMapArray(klines []*binance_connector.KlinesResponse, ind []Indicator) map[string][]float64 {
-	mapper := make(map[string][]float64, len(Indicators))
+	mapper := make(map[string][]float64, len(ind))
 	close := CloseFromKlines(klines)
-	vols := VolumeFromKlines(klines)
+	_ = VolumeFromKlines(klines)
 
-	for _, i := range Indicators {
-		if i.Type == "Price" {
+	for _, i := range ind {
+
+		if strings.HasPrefix(i.Name, "EMA") {
 			mapper[i.GetMapKey()] = i.Calculator(close, i.Param)
 		}
-		if i.Type == "Volume" {
-			mapper[i.GetMapKey()] = i.Calculator(vols, i.Param)
+
+		if strings.HasPrefix(i.Name, "RSI") {
+			mapper[i.GetMapKey()] = analysis.RSIcalc(close, i.Param)
 		}
 	}
 	return mapper
@@ -62,13 +81,17 @@ func BuildIndicatorsMapArray(klines []*binance_connector.KlinesResponse, ind []I
 
 func BuildFeaturedKlinesArray(klines []*binance_connector.KlinesResponse, ind []Indicator) []FeaturedKlines {
 	var featuresArray []FeaturedKlines
+	// THIS FUNC FAIL
 	indicatorsArray := BuildIndicatorsMapArray(klines, ind)
 	klen := len(klines)
+
 	for i := 0; i < len(klines)-1; i++ {
 		featured := FeaturedKlines{
 			klines[i],
-			make(map[string]float64),
+			map[string]float64{},
 		}
+		featured.FeaturesMap = make(map[string]float64, 1)
+
 		for _, l := range ind {
 			offset := klen - len(indicatorsArray[l.GetMapKey()])
 			if i >= offset {
@@ -92,4 +115,31 @@ func FeaturedKlinesToString(f FeaturedKlines) []string {
 		arr = append(arr, str)
 	}
 	return arr
+}
+
+func (f *FeaturedKlines) FloatClose() float64 {
+
+	float, err := strconv.ParseFloat(f.Close, 64)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return float
+}
+
+func (f *FeaturedKlines) EMAShortOverLong(ind []Indicator) (bool, error) {
+	if len(ind) < 2 {
+		return false, fmt.Errorf("ind must be len 2 at least not %d", len(ind))
+	}
+	if !strings.HasPrefix(ind[0].Name, "EMA") || !strings.HasPrefix(ind[1].Name, "EMA") {
+		return false, fmt.Errorf("two first indicators must be EMA not %s %s", ind[0].Name, ind[1].Name)
+	}
+	if f.FeaturesMap[ind[0].GetMapKey()] > f.FeaturesMap[ind[1].GetMapKey()] {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (f *FeaturedKlines) RSIUnder(threshold float64, ind []Indicator) bool {
+	return f.FeaturesMap[ind[2].GetMapKey()] < threshold
+
 }
